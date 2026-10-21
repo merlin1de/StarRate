@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.3.6
+
+### EN
+
+**Bug fixes**
+- **Guest ratings are now written into the JPEG XMP** (stars, color labels, pick/reject) — previously a rating made through a guest share link only updated the Nextcloud tag database, never the embedded XMP. Combined with the self-healing XMP read added in 1.3.3 (which treats the file's XMP as the source of truth when a JPEG is opened), a guest rating on a photo that already carried older XMP was silently reverted to the stale value the next time the owner opened it. The guest path now writes both — governed by the share owner's "write XMP" setting — so guest input survives and round-trips to Lightroom / digiKam like any owner rating.
+- **Guests can now clear a color label** — clicking the active color again sends an explicit `null`, which an `isset()` check swallowed as "no change", so a guest could never remove a color. The guest endpoint now distinguishes "field absent" (unchanged) from "field present but empty" (clear), matching the logged-in path; the cleared state propagates to both the tag database and the XMP.
+
+**Migration / recovery**
+- **`occ starrate:heal-guest-xmp`** — one-time migration that recovers guest ratings made before this fix (on instances running 1.3.3–1.3.5 with XMP-write enabled) that the self-healing read may have reverted. It reconstructs each guest's intent from the per-share guest log — not the possibly-already-reverted database — and writes it back into both the tag database and the JPEG XMP. Conflict-safe: a file edited externally (Lightroom / digiKam) *after* the guest rated, detected by comparing the file's modification time against the guest-log timestamp, is left untouched. Defaults to a dry-run; `--write` applies, `--user` scopes to a single owner.
+- **Upgrade check** — a repair step on app upgrade scans the guest logs read-only (no file I/O) and reports how many guest-rated files may need healing, pointing to the command above. It never modifies files itself.
+
+### DE
+
+**Bugfixes**
+- **Gast-Bewertungen werden jetzt ins JPEG-XMP geschrieben** (Sterne, Farb-Labels, Pick/Reject) — bisher hat eine Bewertung über einen Gast-Link nur die Nextcloud-Tag-Datenbank aktualisiert, nie das eingebettete XMP. Zusammen mit dem in 1.3.3 eingeführten selbstheilenden XMP-Read (der beim Öffnen eines JPEGs das Datei-XMP als maßgeblich behandelt) wurde eine Gast-Bewertung auf einem Foto mit bereits vorhandenem älterem XMP beim nächsten Öffnen durch den Besitzer still auf den veralteten Wert zurückgesetzt. Der Gast-Pfad schreibt jetzt beides — gesteuert durch die „XMP schreiben"-Einstellung des Share-Besitzers — sodass die Gast-Eingabe erhalten bleibt und wie jede Besitzer-Bewertung nach Lightroom / digiKam zurückläuft.
+- **Gäste können ein Farb-Label jetzt entfernen** — ein erneuter Klick auf die aktive Farbe sendet ein explizites `null`, das eine `isset()`-Prüfung als „keine Änderung" verschluckt hat — ein Gast konnte eine Farbe also nie löschen. Der Gast-Endpunkt unterscheidet jetzt „Feld fehlt" (unverändert) von „Feld vorhanden, aber leer" (löschen), analog zum eingeloggten Pfad; der gelöschte Zustand propagiert in Tag-Datenbank und XMP.
+
+**Migration / Wiederherstellung**
+- **`occ starrate:heal-guest-xmp`** — einmalige Migration, die vor diesem Fix abgegebene Gast-Bewertungen wiederherstellt (auf Instanzen mit 1.3.3–1.3.5 und aktiviertem XMP-Write), die der selbstheilende Read zurückgesetzt haben könnte. Sie rekonstruiert die Gast-Absicht aus dem Gast-Log pro Share — nicht aus der möglicherweise bereits zurückgesetzten Datenbank — und schreibt sie zurück in Tag-Datenbank und JPEG-XMP. Konfliktsicher: eine Datei, die *nach* der Gast-Bewertung extern (Lightroom / digiKam) bearbeitet wurde — erkannt am Vergleich von Datei-Änderungszeit und Gast-Log-Zeitstempel —, bleibt unangetastet. Standardmäßig Dry-Run; `--write` wendet an, `--user` begrenzt auf einen Besitzer.
+- **Upgrade-Prüfung** — ein Repair-Step beim App-Upgrade scannt die Gast-Logs read-only (kein Datei-I/O) und meldet, wie viele gast-bewertete Dateien geheilt werden sollten, mit Verweis auf den obigen Befehl. Er verändert selbst keine Dateien.
+
+## 1.3.5
+
+### EN
+
+**Bug fixes**
+- **Nextcloud 34 compatibility: `Call to undefined method OC\Server::getURLGenerator()`** (#75) — `OC\Server::getURLGenerator()` was removed in NC 34, so loading the app on the latest Nextcloud release ended in a fatal error from `templates/index.php` (and the same call was duplicated in `templates/guest.php` for the guest gallery deep-link URL). Both call sites now resolve the URL generator through the supported DI entry point `\OCP\Server::get(\OCP\IURLGenerator::class)`, which has been available since NC 25 — so the fix covers the full declared compatibility range (29–34) without changing behavior on older releases. Thanks @miaulalala for the report and the spot-on suggested fix.
+
+### DE
+
+**Bugfixes**
+- **Nextcloud 34 Kompatibilität: `Call to undefined method OC\Server::getURLGenerator()`** (#75) — `OC\Server::getURLGenerator()` wurde in NC 34 entfernt, sodass die App beim Laden auf der aktuellen Nextcloud-Version mit einem Fatal Error aus `templates/index.php` abstürzte (der gleiche Aufruf war auch in `templates/guest.php` für die Gast-Galerie-Deep-Link-URL doppelt). Beide Stellen holen den URL-Generator jetzt über den unterstützten DI-Entry-Point `\OCP\Server::get(\OCP\IURLGenerator::class)` — der ist seit NC 25 verfügbar, der Fix deckt also die volle deklarierte Kompatibilitätsspanne (29–34) ab, ohne das Verhalten auf älteren Versionen zu ändern. Danke an @miaulalala für die Meldung und den punktgenauen Fix-Vorschlag.
+
 ## 1.3.4
 
 ### EN
