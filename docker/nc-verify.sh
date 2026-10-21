@@ -31,8 +31,8 @@ $OCC user:setting "$USER" starrate starrate_shares "$SHARE" >/dev/null 2>&1
 
 echo "=== Test 1: guestView page  (getShare DB-Getter + guest.php Nonce-Getter) ==="
 code=$(curl -s -o /tmp/gv.html -w "%{http_code}" -H "Host: localhost" "http://localhost/apps/starrate/guest/$TOKEN")
-marker=$(grep -c 'starrate://guest' /tmp/gv.html)
-echo "  http=$code   guest-template-marker(starrate://guest)=$marker"
+marker=$(grep -cE 'starrate://guest|intent://guest' /tmp/gv.html)
+echo "  http=$code   guest-template-marker(starrate:// oder intent://guest)=$marker"
 
 echo "=== Test 2: guestImages API (getShare + Session-Getter) ==="
 code2=$(curl -s -o /tmp/gi.json -w "%{http_code}" -H "Host: localhost" "http://localhost/apps/starrate/api/guest/$TOKEN/images")

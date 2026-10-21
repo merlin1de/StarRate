@@ -5,7 +5,7 @@
 [![CI](https://github.com/merlin1de/starrate/actions/workflows/ci.yml/badge.svg)](https://github.com/merlin1de/starrate/actions/workflows/ci.yml)
 [![Nextcloud App Store](https://img.shields.io/badge/Nextcloud%20App%20Store-StarRate-blue?logo=nextcloud)](https://apps.nextcloud.com/apps/starrate)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-green.svg)](LICENSE)
-[![Nextcloud 29–34](https://img.shields.io/badge/Nextcloud-29–34-0082c9?logo=nextcloud)](https://apps.nextcloud.com/apps/starrate)
+[![Nextcloud 29–35](https://img.shields.io/badge/Nextcloud-29–35-0082c9?logo=nextcloud)](https://apps.nextcloud.com/apps/starrate)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php)](https://php.net)
 
 > 🌳 **New in v1.3** — Recursive folder view: browse a whole folder tree as one stream, optionally grouped by folder depth. → [How it works](docs/recursive-folders.en.md)
@@ -90,7 +90,7 @@ Guests can rate images in their browser — **no Nextcloud account required**. T
 
 ## Requirements
 
-- Nextcloud 29–34
+- Nextcloud 29–35
 - PHP 8.1–8.5
 - Node.js 18+ / npm 9+
 - Composer 2

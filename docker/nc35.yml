@@ -1,0 +1,58 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# StarRate – Nextcloud 35 Testinstanz  (Hub 26 Summer)
+# Läuft auf: donkeykong  (docker compose -f docker/nc35.yml up -d)
+#
+# WICHTIG – einmaliger Image-Pull:
+#   Das Image `nextcloud:35` muss EINMAL INTERAKTIV (RDP/Konsole) auf donkeykong
+#   gepullt werden:   docker pull nextcloud:35
+#   Grund: über SSH (Network-Logon) crasht der Docker-Desktop-Credential-Helper
+#   ("A specified logon session does not exist") — `pull` ruft ihn immer auf, auch
+#   für öffentliche Images. `compose up` braucht den Pull nicht, wenn das Image
+#   bereits lokal vorliegt → danach läuft alles per SSH.
+#   Ohne RDP geht's per SSH auch über crane (kein Credential-Helper, `docker load`
+#   braucht keinen): DOCKER_CONFIG auf leeres Dir mit `{}`-config.json, dann
+#     crane.exe pull --platform linux/amd64 nextcloud:35 nc35.tar
+#     docker load -i nc35.tar
+#   (crane = go-containerregistry_Windows_x86_64.tar.gz von GitHub Releases)
+#
+# Erster Start:
+#   docker compose -f docker/nc35.yml up -d
+#   # Warten bis NC initialisiert (~30 Sekunden)
+#   docker compose -f docker/nc35.yml exec --user www-data nc35 php occ app:enable starrate
+#
+# Danach erreichbar unter: http://localhost:8200
+# Login: admin / admin
+#
+# App aktualisieren (nach Code-Änderungen):
+#   docker compose -f docker/nc35.yml exec --user www-data nc35 php occ upgrade
+#   # ACHTUNG Opcache: wenn die gebuggte Version vorher schon ausgeführt wurde,
+#   # hält der Opcache den alten Bytecode → `docker restart starrate-nc35` flusht.
+#
+# Instanz stoppen und Daten löschen (Reset):
+#   docker compose -f docker/nc35.yml down -v
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  nc35:
+    image: nextcloud:35
+    container_name: starrate-nc35
+    ports:
+      - "8200:80"
+
+    environment:
+      # Auto-Install beim ersten Start (kein Web-Wizard nötig)
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: admin
+      NEXTCLOUD_TRUSTED_DOMAINS: "localhost donkeykong 192.168.2.30"
+      # SQLite – kein DB-Container nötig für Tests
+      SQLITE_DATABASE: nextcloud
+
+    volumes:
+      # NC-Daten persistent (Config, DB, Uploads)
+      - nc35_data:/var/www/html
+
+    restart: unless-stopped
+
+volumes:
+  nc35_data:
