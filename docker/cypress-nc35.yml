@@ -1,0 +1,49 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# StarRate – Cypress E2E Container gegen NC35 (teilt Netns mit starrate-nc35)
+# Läuft auf: donkeykong  (docker compose -f docker/cypress-nc35.yml run --rm cypress)
+#
+# NC35-Vorbereitung (einmalig, sonst scheitern die UI-Specs an Core-Overlays):
+#   occ config:system:set no_unsupported_browser_warning --value=true --type=boolean
+#       (Cypress-Electron 118 gilt NC35 als „unsupported" → Redirect auf /unsupported)
+#   occ app:disable firstrunwizard
+#       (Willkommens-Modal für neue User verdeckt das Grid)
+#   occ config:system:set auth.bruteforce.protection.enabled --value=false --type=boolean
+#   User test/test2 + /Fotos/E2E-Test wie auf nc-nightly4 anlegen
+#
+# Voraussetzungen auf donkeykong:
+#   - docker + docker compose installiert
+#   - Dieses Repository geklont unter /opt/starrate  (oder beliebiger Pfad)
+#   - docker/cypress.env angelegt (Kopie von docker/cypress.env.example)
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  cypress:
+    image: cypress/included:13.17.0
+    container_name: starrate-cypress-nc35
+    working_dir: /e2e
+
+    # Repo-Root ins /e2e-Verzeichnis mounten
+    volumes:
+      - ..:/e2e
+
+    # Credentials aus .env-Datei lesen (nie committen!)
+    env_file:
+      - cypress.env
+
+    environment:
+      # Kein Sandbox-Problem in Docker (Linux-Container auf Windows-Host)
+      ELECTRON_EXTRA_LAUNCH_ARGS: "--no-sandbox"
+      # Cypress findet Node in PATH
+      NODE_PATH: /usr/local/lib/node_modules
+
+    # Network-Namespace mit nc-nightly4 teilen → Cypress erreicht NC unter http://localhost (Port 80).
+    # Vermeidet host.docker.internal/Port-8180-Forwarding-Probleme zwischen Compose-Default-Net und
+    # dem bridge-Default-Netz, in dem nc-nightly4 läuft.
+    network_mode: "container:starrate-nc35"
+
+    # Ergebnisse landen im gemounteten Repo-Ordner
+    # tests/results/cypress/screenshots & videos
+
+    # Container entfernt sich nach dem Lauf automatisch
+    restart: "no"
