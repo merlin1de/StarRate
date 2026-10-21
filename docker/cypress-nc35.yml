@@ -2,6 +2,14 @@
 # StarRate – Cypress E2E Container gegen NC35 (teilt Netns mit starrate-nc35)
 # Läuft auf: donkeykong  (docker compose -f docker/cypress-nc35.yml run --rm cypress)
 #
+# NC35-Vorbereitung (einmalig, sonst scheitern die UI-Specs an Core-Overlays):
+#   occ config:system:set no_unsupported_browser_warning --value=true --type=boolean
+#       (Cypress-Electron 118 gilt NC35 als „unsupported" → Redirect auf /unsupported)
+#   occ app:disable firstrunwizard
+#       (Willkommens-Modal für neue User verdeckt das Grid)
+#   occ config:system:set auth.bruteforce.protection.enabled --value=false --type=boolean
+#   User test/test2 + /Fotos/E2E-Test wie auf nc-nightly4 anlegen
+#
 # Voraussetzungen auf donkeykong:
 #   - docker + docker compose installiert
 #   - Dieses Repository geklont unter /opt/starrate  (oder beliebiger Pfad)
