@@ -138,30 +138,29 @@ jobs:
           path: dist/starrate.tar.gz
           retention-days: 1
 
-  # ── Install test (NC 33) ─────────────────────────────────────────────────────
+  # ── Install test (NC 33 = Produktionsbasis, NC 35 = neueste Major) ─────────
   install-test:
-    name: Install test (NC 33)
+    name: Install test (NC ${{ matrix.nc }})
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        nc: ['33', '35']
 
     steps:
-      - name: Start Nextcloud 33
+      - name: Start Nextcloud ${{ matrix.nc }}
         run: |
-          docker run -d --name nc33 \
-            -p 8080:80 \
-            -e NEXTCLOUD_ADMIN_USER=admin \
-            -e NEXTCLOUD_ADMIN_PASSWORD=admin \
-            -e NEXTCLOUD_TRUSTED_DOMAINS=localhost \
-            -e SQLITE_DATABASE=nextcloud \
-            nextcloud:33
-          echo "Waiting for Nextcloud to initialize (up to 90s)..."
-          for i in $(seq 1 18); do
+          docker run -d --name nc             -p 8080:80             -e NEXTCLOUD_ADMIN_USER=admin             -e NEXTCLOUD_ADMIN_PASSWORD=admin             -e NEXTCLOUD_TRUSTED_DOMAINS=localhost             -e SQLITE_DATABASE=nextcloud             nextcloud:${{ matrix.nc }}
+          echo "Waiting for Nextcloud to initialize (up to 120s)..."
+          for i in $(seq 1 24); do
             sleep 5
             STATUS=$(curl -sf http://localhost:8080/status.php 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('installed',''))" 2>/dev/null || echo "")
             echo "  Attempt $i: installed=$STATUS"
             [ "$STATUS" = "True" ] && echo "Nextcloud ready ✓" && break
-            [ "$i" = "18" ] && echo "Timeout waiting for NC" && exit 1
+            [ "$i" = "24" ] && echo "Timeout waiting for NC" && exit 1
           done
+          docker exec -u www-data nc php occ status | grep versionstring
 
       - name: Download archive artifact
         uses: actions/download-artifact@v4
@@ -171,28 +170,41 @@ jobs:
       - name: Install app into Nextcloud
         run: |
           tar -xzf starrate.tar.gz -C /tmp/
-          docker cp /tmp/starrate nc33:/var/www/html/custom_apps/
+          docker cp /tmp/starrate nc:/var/www/html/custom_apps/
 
       - name: Enable app and verify version
         run: |
-          RESULT=$(docker exec -u www-data nc33 php occ app:enable starrate 2>&1)
+          # Ohne --force: scheitert, wenn info.xml max-version die NC-Version nicht abdeckt
+          RESULT=$(docker exec -u www-data nc php occ app:enable starrate 2>&1)
           echo "$RESULT"
           echo "$RESULT" | grep -q "enabled" || (echo "App enable failed!" && exit 1)
-          echo "$RESULT" | grep -q "${{ inputs.version }}" \
-            && echo "Version ${{ inputs.version }} confirmed ✓" \
-            || echo "Warning: could not confirm version ${{ inputs.version }} in output (non-fatal)"
+          echo "$RESULT" | grep -q "${{ inputs.version }}"             && echo "Version ${{ inputs.version }} confirmed ✓"             || echo "Warning: could not confirm version ${{ inputs.version }} in output (non-fatal)"
 
       - name: Smoke test — no PHP fatal errors
         run: |
-          RESULT=$(docker exec -u www-data nc33 php occ app:check starrate 2>&1 || true)
+          RESULT=$(docker exec -u www-data nc php occ app:check starrate 2>&1 || true)
           echo "$RESULT"
-          echo "$RESULT" | grep -qiE "fatal|Uncaught|class.*not found|namespace" \
-            && (echo "Fatal PHP error detected!" && exit 1) \
-            || echo "No fatal PHP errors ✓"
-          docker exec -u www-data nc33 php occ app:list --enabled 2>&1 \
-            | grep -q "starrate" \
-            && echo "App enabled ✓" \
-            || (echo "App missing from enabled list!" && exit 1)
+          echo "$RESULT" | grep -qiE "fatal|Uncaught|class.*not found|namespace"             && (echo "Fatal PHP error detected!" && exit 1)             || echo "No fatal PHP errors ✓"
+          docker exec -u www-data nc php occ app:list --enabled 2>&1             | grep -q "starrate"             && echo "App enabled ✓"             || (echo "App missing from enabled list!" && exit 1)
+
+      - name: Runtime smoke — gallery + guest route
+        run: |
+          # Echte Requests gegen Controller + Templates: fängt entfernte Core-APIs,
+          # die erst zur Laufzeit knallen (z.B. #89, NC34 Magic-Getter → HTTP 500)
+          docker exec nc bash -c 'cp /var/www/html/data/nextcloud.log /tmp/base.log 2>/dev/null || touch /tmp/base.log'
+          GAL=$(curl -s -o /tmp/gal.html -w "%{http_code}" -u admin:admin -H "OCS-APIRequest: true" http://localhost:8080/index.php/apps/starrate/)
+          API=$(curl -s -o /tmp/api.json -w "%{http_code}" -u admin:admin -H "OCS-APIRequest: true" "http://localhost:8080/index.php/apps/starrate/api/images?path=/")
+          GST=$(curl -s -o /tmp/gst.html -w "%{http_code}" http://localhost:8080/index.php/apps/starrate/guest/doesnotexist)
+          echo "gallery=$GAL  api/images=$API  guest(invalid token)=$GST"
+          head -c 300 /tmp/api.json; echo
+          docker exec nc bash -c 'tail -n +$(( $(wc -l < /tmp/base.log) + 1 )) /var/www/html/data/nextcloud.log 2>/dev/null' | tee /tmp/new.log
+          if grep -qiE "Call to undefined method|Fatal error|Uncaught Error|Uncaught Exception" /tmp/new.log /tmp/gal.html /tmp/gst.html; then
+            echo "Fatal error detected!"; exit 1
+          fi
+          [ "$GAL" = "200" ] || (echo "Gallery route: $GAL" && exit 1)
+          [ "$API" = "200" ] || (echo "Images API: $API" && exit 1)
+          [ "$GST" -lt 500 ] || (echo "Guest route: $GST" && exit 1)
+          echo "Runtime smoke OK on NC ${{ matrix.nc }} ✓"
 
   # ── GitHub Release ───────────────────────────────────────────────────────────
   release:
