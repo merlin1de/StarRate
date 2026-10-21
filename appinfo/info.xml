@@ -21,7 +21,7 @@ Rate photos with 1–5 stars and color labels, flag picks and rejects with keybo
 
 **Features:**
 - Star ratings (0–5) + color labels (Red/Yellow/Green/Blue/Purple) + Pick/Reject flags
-- **Recursive folder view** — browse an entire folder tree as a flat stream or grouped by folder depth
+- **Recursive folder view** — browse an entire folder tree as a flat stream or grouped by folder depth. Opt-in — enable it once under Personal → StarRate. [How it works](https://github.com/merlin1de/starrate/blob/master/docs/recursive-folders.en.md)
 - **Loupe slideshow mode** — auto-advance with configurable interval, ideal for client presentations
 - XMP metadata written into JPEG — Lightroom / Bridge / digiKam compatible
 - Configurable XMP label language: Lightroom (German localization) or Bridge / digiKam / English tools
@@ -54,7 +54,7 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
 
 **Features:**
 - Sternbewertungen (0–5) + Farb-Labels (Rot/Gelb/Grün/Blau/Lila) + Pick/Reject-Flags
-- **Rekursive Ordneransicht** — kompletten Ordnerbaum als flachen Stream oder nach Ordnertiefe gruppiert durchblättern
+- **Rekursive Ordneransicht** — kompletten Ordnerbaum als flachen Stream oder nach Ordnertiefe gruppiert durchblättern. Opt-in — einmal unter Persönlich → StarRate aktivieren. [So funktioniert's](https://github.com/merlin1de/starrate/blob/master/docs/recursive-folders.de.md)
 - **Diashow-Modus in der Loupe** — automatisches Durchlaufen mit einstellbarem Intervall, ideal für Kundenpräsentationen
 - XMP-Metadaten ins JPEG geschrieben — Lightroom / Bridge / digiKam kompatibel
 - Konfigurierbare XMP-Label-Sprache: Lightroom (deutsche Lokalisierung) oder Bridge / digiKam / englische Tools
@@ -72,7 +72,7 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
 - Englisch und Deutsch
     ]]></description>
 
-    <version>1.3.12</version>
+    <version>1.3.13</version>
     <licence>agpl</licence>
 
     <author mail="starrate@merlin1.de" homepage="https://github.com/merlin1de/starrate">
@@ -102,7 +102,7 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
         <database>sqlite</database>
         <database>mysql</database>
         <database>pgsql</database>
-        <nextcloud min-version="29" max-version="34"/>
+        <nextcloud min-version="29" max-version="35"/>
     </dependencies>
 
     <repair-steps>
