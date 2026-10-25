@@ -7,6 +7,7 @@ namespace OCA\StarRate\Tests\Unit\Controller;
 use OCA\StarRate\Controller\RatingController;
 use OCA\StarRate\Service\ExifService;
 use OCA\StarRate\Service\ShareService;
+use OCA\StarRate\Service\SidecarService;
 use OCA\StarRate\Service\TagService;
 use OCA\StarRate\Settings\UserSettings;
 use OCP\AppFramework\Http;
@@ -40,6 +41,8 @@ class RatingControllerTest extends TestCase
     private ShareService $shareService;
     /** @var LoggerInterface&MockObject */
     private LoggerInterface $logger;
+    /** @var SidecarService&MockObject */
+    private SidecarService $sidecarService;
 
     private const USER_ID = 'testuser';
     private const FILE_ID = 1234;
@@ -54,6 +57,7 @@ class RatingControllerTest extends TestCase
         $this->userSettings = $this->createMock(UserSettings::class);
         $this->shareService = $this->createMock(ShareService::class);
         $this->logger       = $this->createMock(LoggerInterface::class);
+        $this->sidecarService = $this->createMock(SidecarService::class);
 
         $user = $this->createMock(IUser::class);
         $user->method('getUID')->willReturn(self::USER_ID);
@@ -62,6 +66,7 @@ class RatingControllerTest extends TestCase
         // Default: write_xmp aktiv, comments_enabled aktiv
         $this->userSettings->method('getSettings')->willReturn([
             'write_xmp'          => true,
+            'write_raw_sidecar'  => true,
             'xmp_label_language' => 'en',
             'comments_enabled' => true,
         ]);
@@ -76,6 +81,7 @@ class RatingControllerTest extends TestCase
             $this->userSettings,
             $this->shareService,
             $this->logger,
+            $this->sidecarService,
         );
     }
 
@@ -235,7 +241,7 @@ class RatingControllerTest extends TestCase
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
             $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger,
+            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
         );
 
         $this->mockFileById(self::FILE_ID);
@@ -556,7 +562,7 @@ class RatingControllerTest extends TestCase
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
             $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger,
+            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
         );
 
         $response = $controller->getComment(self::FILE_ID);
@@ -599,7 +605,7 @@ class RatingControllerTest extends TestCase
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
             $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger,
+            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
         );
 
         $this->mockJsonBody(['comment' => 'Test']);
@@ -630,7 +636,7 @@ class RatingControllerTest extends TestCase
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
             $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger,
+            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
         );
 
         $response = $controller->deleteComment(self::FILE_ID);
@@ -649,9 +655,63 @@ class RatingControllerTest extends TestCase
             $this->userSession, $this->tagService, $this->exifService,
             $this->userSettings, $this->shareService,
             $this->createMock(LoggerInterface::class),
+            $this->sidecarService,
         );
 
         $response = $controller->get(self::FILE_ID);
         $this->assertSame(Http::STATUS_UNAUTHORIZED, $response->getStatus());
+    }
+
+    // ─── Tests: RAW → XMP-Sidecar statt eingebettetem XMP ────────────────────
+
+    public function testSetOnRawWritesSidecarNotJpegXmp(): void
+    {
+        $file = $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
+        $this->mockJsonBody(['rating' => 4, 'color' => 'Red']);
+        $this->tagService->method('getMetadata')->willReturn(['rating' => 4, 'color' => 'Red', 'pick' => 'none']);
+        $this->exifService->expects($this->never())->method('writeMetadata');
+        $this->sidecarService->expects($this->once())->method('writeMetadata')->with($file, 4, 'Red', null, 'en');
+
+        $response = $this->controller->set(self::FILE_ID);
+        $this->assertSame(Http::STATUS_OK, $response->getStatus());
+    }
+
+    public function testBatchOnRawCountsSidecarWrites(): void
+    {
+        $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
+        $this->mockJsonBody(['fileIds' => [self::FILE_ID], 'pick' => 'pick']);
+        $this->sidecarService->expects($this->once())->method('writeMetadata');
+
+        $this->assertSame(1, $this->controller->setBatch()->getData()['xmpWritten']);
+    }
+
+    public function testGetOnRawSelfHealsFromSidecar(): void
+    {
+        $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
+        $this->tagService->method('getMetadata')->willReturn(['rating' => 1, 'color' => null, 'pick' => 'none']);
+        $this->tagService->expects($this->once())->method('setMetadata')
+            ->with((string) self::FILE_ID, ['rating' => 5, 'color' => 'Green', 'pick' => 'none']);
+        $this->sidecarService->method('readMetadata')->willReturn(['rating' => 5, 'label' => 'Green', 'pick' => 'none']);
+
+        $this->assertSame(5, $this->controller->get(self::FILE_ID)->getData()['rating']);
+    }
+
+    public function testRawSidecarCanBeDisabled(): void
+    {
+        $this->userSettings = $this->createMock(UserSettings::class);
+        $this->userSettings->method('getSettings')->willReturn([
+            'write_xmp' => true, 'write_raw_sidecar' => false, 'xmp_label_language' => 'en', 'comments_enabled' => true,
+        ]);
+        $controller = new RatingController(
+            'starrate', $this->request, $this->rootFolder,
+            $this->userSession, $this->tagService, $this->exifService,
+            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
+        );
+        $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
+        $this->mockJsonBody(['rating' => 2]);
+        $this->tagService->method('getMetadata')->willReturn(['rating' => 2, 'color' => null, 'pick' => 'none']);
+        $this->sidecarService->expects($this->never())->method('writeMetadata');
+
+        $controller->set(self::FILE_ID);
     }
 }

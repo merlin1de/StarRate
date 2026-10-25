@@ -30,6 +30,8 @@ StarRate solves both — and it keeps your ratings inside the JPEG itself, so ev
 
 StarRate writes ratings directly into the **JPEG APP1 segment** (XMP standard). No sidecar files. No re-export needed.
 
+Camera RAW files (NEF, CR2, ARW, DNG, RAF, …) are never modified: their ratings go into a Lightroom-style sidecar (`DSC_0001.NEF` → `DSC_0001.xmp`). An existing sidecar is patched in place, so develop settings stay intact. In Lightroom Classic: *Metadata → Read Metadata from Files*.
+
 | Application | Reads StarRate ratings |
 |---|---|
 | Adobe Lightroom Classic | ✅ |
@@ -49,6 +51,7 @@ Rate in Nextcloud → open in Lightroom → stars are already there.
 | 🎨 Color labels | Red / Yellow / Green / Blue / Purple (keys `6`–`9`) |
 | 🚩 Pick / Reject | Flag images with `P` / `X`, batch support via selection bar |
 | 📝 XMP metadata | Ratings written directly into JPEG (APP1 segment) |
+| 📷 Camera RAW | NEF, CR2, ARW, DNG, PEF, ORF, RW2, RAF in grid, loupe and guest galleries. The preview is the JPEG the camera embeds (no demosaicing, no extra server packages); ratings go into an XMP sidecar |
 | 📥 XMP import | `occ starrate:import-xmp` — import existing ratings from Lightroom, digiKam, etc. |
 | 💬 Comments | Per-photo notes in loupe view — owner and guests can comment |
 | 📤 Export | CSV download or clipboard copy of ratings and metadata |

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\StarRate\Controller;
 
+use OCA\StarRate\Service\RawPreviewExtractor;
 use OCA\StarRate\Service\ShareService;
 use OCA\StarRate\Service\TagService;
 use OCP\AppFramework\Controller;
@@ -40,6 +41,7 @@ class GalleryController extends Controller
         'image/tiff',
         'image/heic',
         'image/heif',
+        RawPreviewExtractor::MIME,
     ];
 
     // 5 Minuten — Listen werden bei add/remove im Ordner unscharf, der Trade-off
@@ -345,10 +347,11 @@ class GalleryController extends Controller
         Folder $folder, Folder $userFolder, string $sort, string $order,
         bool $recursive, int $depth,
     ): array {
+        // v3: RAW-MIME-Typ ergänzt (v2-Listen enthalten keine NEFs).
         // v2: Cache-Format-Bump — neue Felder (relPath/groupKey) und neuer
         // Recursive-DB-Pfad (anderes path-Format als v1).
         $key = sprintf(
-            'list-v2:%d:%s:%s:r%d:d%d',
+            'list-v3:%d:%s:%s:r%d:d%d',
             $folder->getId(), $sort, $order, $recursive ? 1 : 0, $depth,
         );
 

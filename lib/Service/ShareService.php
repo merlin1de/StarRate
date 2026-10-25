@@ -41,8 +41,9 @@ class ShareService
     private const TOKEN_LENGTH         = 24;
     private const GUEST_LOG_MAX_ENTRIES = 500;
 
-    // Unterstützte MIME-Typen für Gast-Galerie
-    private const GUEST_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    // Unterstützte MIME-Typen für Gast-Galerie. RAW: ausgeliefert wird nur die
+    // Vorschau — die RAW-Datei selbst nur, wenn der Share Downloads erlaubt.
+    private const GUEST_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', RawPreviewExtractor::MIME];
 
     public function __construct(
         private readonly IConfig         $config,
@@ -54,6 +55,7 @@ class ShareService
         private readonly IDBConnection $db,
         private readonly ExifService     $exifService,
         private readonly UserSettings    $userSettings,
+        private readonly SidecarService  $sidecarService,
     ) {}
 
     // ─── Share erstellen / verwalten ─────────────────────────────────────────
@@ -770,17 +772,20 @@ class ShareService
     private function writeGuestXmp(string $ownerId, int $fileId, ?int $rating, ?string $color, ?string $pick): void
     {
         $file = $this->getOwnerFile($ownerId, $fileId);
-        if ($file === null || !in_array($file->getMimeType(), ['image/jpeg', 'image/jpg'], true)) {
+        if ($file === null) {
             return;
         }
 
         $settings = $this->userSettings->getSettings($ownerId);
-        if (!$settings['write_xmp']) {
+        $isJpeg   = in_array($file->getMimeType(), ['image/jpeg', 'image/jpg'], true);
+        if (!$settings['write_xmp'] || (!$isJpeg && !SidecarService::appliesTo($file, $settings))) {
             return;
         }
 
         try {
-            $this->exifService->writeMetadata($file, $rating, $color, $pick, $settings['xmp_label_language']);
+            // RAW → XMP-Sidecar neben der Datei, JPEG → eingebettetes XMP
+            $writer = $isJpeg ? $this->exifService : $this->sidecarService;
+            $writer->writeMetadata($file, $rating, $color, $pick, $settings['xmp_label_language']);
         } catch (\Exception $e) {
             $this->logger->warning("StarRate: Gast-XMP-Write übersprungen für {$fileId}: " . $e->getMessage());
         }

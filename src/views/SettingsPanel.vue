@@ -28,6 +28,15 @@
       <p v-if="form.write_xmp" class="sr-settings__hint">
         {{ t('starrate', 'Steuert nur den Label-Text (xmp:Label). Der Farbstreifen (photoshop:LabelColor) bleibt sprachneutral und funktioniert in beiden Modi.') }}
       </p>
+      <div v-if="form.write_xmp" class="sr-settings__row">
+        <label class="sr-settings__label sr-settings__label--check">
+          <input type="checkbox" v-model="form.write_raw_sidecar" @change="autosave" />
+          {{ t('starrate', 'Bei RAW-Dateien XMP-Sidecar schreiben') }}
+        </label>
+      </div>
+      <p v-if="form.write_xmp && form.write_raw_sidecar" class="sr-settings__hint">
+        {{ t('starrate', 'Die RAW-Datei bleibt unverändert. Bewertungen landen in DSC_0001.xmp neben DSC_0001.NEF; vorhandene Lightroom-Sidecars werden nur ergänzt.') }}
+      </p>
       <div class="sr-settings__row">
         <label class="sr-settings__label sr-settings__label--check">
           <input type="checkbox" v-model="form.comments_enabled" @change="autosave" />
@@ -182,6 +191,7 @@ const DEFAULTS = {
   grid_columns:             'auto',
   enable_pick_ui:            false,
   write_xmp:                 true,
+  write_raw_sidecar:         true,
   xmp_label_language:        'en',  // Server-seitig basierend auf User-Locale gesetzt
   comments_enabled:          false,
   recursion_enabled:         false,

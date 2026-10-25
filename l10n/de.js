@@ -226,6 +226,8 @@ OC.L10N.register(
         "Aufsteigend" : "Aufsteigend",
         "Absteigend" : "Absteigend",
         "XMP in JPEG schreiben" : "XMP in JPEG schreiben",
+        "Bei RAW-Dateien XMP-Sidecar schreiben" : "Bei RAW-Dateien XMP-Sidecar schreiben",
+        "Die RAW-Datei bleibt unverändert. Bewertungen landen in DSC_0001.xmp neben DSC_0001.NEF; vorhandene Lightroom-Sidecars werden nur ergänzt." : "Die RAW-Datei bleibt unverändert. Bewertungen landen in DSC_0001.xmp neben DSC_0001.NEF; vorhandene Lightroom-Sidecars werden nur ergänzt.",
         "Kommentare aktivieren" : "Kommentare aktivieren",
         "Kommentare erlauben" : "Kommentare erlauben",
     "Kommentare deaktivieren" : "Kommentare deaktivieren",

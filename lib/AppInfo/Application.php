@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\StarRate\AppInfo;
 
 use OCA\StarRate\Listener\NodeDeletedListener;
+use OCA\StarRate\Preview\RawPreviewProvider;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -26,6 +27,8 @@ class Application extends App implements IBootstrap
     public function register(IRegistrationContext $context): void
     {
         $context->registerEventListener(NodeDeletedEvent::class, NodeDeletedListener::class);
+        // RAW-Vorschauen (NEF & Co.) aus dem eingebetteten Kamera-JPEG
+        $context->registerPreviewProvider(RawPreviewProvider::class, RawPreviewProvider::MIME_REGEX);
     }
 
     public function boot(IBootContext $context): void

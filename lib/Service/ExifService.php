@@ -158,6 +158,38 @@ class ExifService
     }
 
     /**
+     * Liest Metadaten aus einem eigenständigen XMP-Paket (z.B. RAW-Sidecar).
+     *
+     * @return array{rating: int, label: string|null, pick: string}
+     */
+    public function readMetadataFromXmp(string $xmp): array
+    {
+        return trim($xmp) === '' ? self::emptyResult() : $this->parseXmp($xmp);
+    }
+
+    /**
+     * Schreibt Metadaten in ein eigenständiges XMP-Paket (z.B. RAW-Sidecar) und gibt
+     * es zurück. Gleiche Patch-Regeln wie beim JPEG; $xmp === null baut ein neues Paket.
+     *
+     * @throws \RuntimeException wenn das vorhandene XMP nicht gepatcht werden kann —
+     *         es wird nie ersetzt, es könnte eine Lightroom-Entwicklung enthalten.
+     */
+    public function writeMetadataToXmp(
+        ?string $xmp,
+        ?int $rating = null,
+        ?string $label = null,
+        ?string $pick = null,
+        string $lang = XmpService::LABEL_LANG_EN,
+    ): string {
+        $this->validateInputs($rating, $label, $pick);
+
+        if ($xmp !== null && !str_contains($xmp, '<rdf:Description')) {
+            throw new \RuntimeException('XMP packet has no rdf:Description block.');
+        }
+        return $this->applyMetadataToXmp($xmp, $rating, $label, $pick, $lang);
+    }
+
+    /**
      * Prüft ob eine Datei ein JPEG ist (anhand Magic Bytes, nicht Dateiendung).
      */
     public function isJpegFile(File $file): bool
@@ -183,17 +215,21 @@ class ExifService
      */
     private function applyMetadataToContent(string $content, ?int $rating, ?string $label, ?string $pick, string $lang): string
     {
-        $xmpBlock = $this->extractXmpBlock($content);
-        $existing = $xmpBlock !== null
-            ? $this->parseXmp($xmpBlock)
-            : ['rating' => 0, 'label' => null, 'pick' => 'none'];
+        $newXmp = $this->applyMetadataToXmp($this->extractXmpBlock($content), $rating, $label, $pick, $lang);
+        return $this->embedXmpInJpeg($content, $newXmp);
+    }
+
+    /**
+     * Wendet Rating, Label und Pick auf einen XMP-Block an (null = neues Paket bauen).
+     */
+    private function applyMetadataToXmp(?string $xmpBlock, ?int $rating, ?string $label, ?string $pick, string $lang): string
+    {
+        $existing = $xmpBlock !== null ? $this->parseXmp($xmpBlock) : self::emptyResult();
         $merged   = $this->mergeXmpData($existing, $rating, $label, $pick);
 
-        $newXmp = $xmpBlock !== null
+        return $xmpBlock !== null
             ? $this->patchXmpString($xmpBlock, $merged['rating'], $merged['label'], $merged['pick'], $lang)
             : $this->buildXmpPacket($merged['rating'], $merged['label'], $merged['pick'], $lang);
-
-        return $this->embedXmpInJpeg($content, $newXmp);
     }
 
     /**
