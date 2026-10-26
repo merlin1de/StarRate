@@ -30,7 +30,7 @@ StarRate solves both — and it keeps your ratings inside the JPEG itself, so ev
 
 StarRate writes ratings directly into the **JPEG APP1 segment** (XMP standard). No sidecar files. No re-export needed.
 
-Camera RAW files (NEF, CR2, ARW, DNG, RAF, …) are never modified: their ratings go into a Lightroom-style sidecar (`DSC_0001.NEF` → `DSC_0001.xmp`). An existing sidecar is patched in place, so develop settings stay intact. In Lightroom Classic: *Metadata → Read Metadata from Files*.
+Camera RAW files (NEF, CR2, ARW, DNG, RAF, …) are never modified: their ratings go into a Lightroom-style sidecar (`DSC_0001.NEF` → `DSC_0001.xmp`). An existing sidecar is patched in place, so develop settings stay intact, and it follows its RAW when you rename, move or delete it in Nextcloud. In Lightroom Classic: *Metadata → Read Metadata from Files*. DNG is the exception: Lightroom keeps DNG metadata inside the file and ignores sidecars, so DNG ratings stay in Nextcloud only.
 
 | Application | Reads StarRate ratings |
 |---|---|

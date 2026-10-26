@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace OCA\StarRate\Controller;
 
-use OCA\StarRate\Service\ExifService;
 use OCA\StarRate\Service\ShareService;
-use OCA\StarRate\Service\SidecarService;
 use OCA\StarRate\Service\TagService;
+use OCA\StarRate\Service\XmpStoreResolver;
 use OCA\StarRate\Settings\UserSettings;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -29,11 +28,10 @@ class RatingController extends Controller
         private readonly IRootFolder  $rootFolder,
         private readonly IUserSession $userSession,
         private readonly TagService   $tagService,
-        private readonly ExifService  $exifService,
+        private readonly XmpStoreResolver $xmpStores,
         private readonly UserSettings $userSettings,
         private readonly ShareService $shareService,
         private readonly LoggerInterface $logger,
-        private readonly SidecarService $sidecarService,
     ) {
         parent::__construct($appName, $request);
     }
@@ -71,7 +69,7 @@ class RatingController extends Controller
             $db        = $this->tagService->getMetadata($fileIdStr);
 
             // Self-healing nur bei JPEG / RAW-Sidecar + write_xmp setting on (User hat XMP-as-master akzeptiert)
-            $store = $this->xmpStore($file, $this->userSettings->getSettings($userId));
+            $store = $this->xmpStores->forFile($file, $this->userSettings->getSettings($userId));
             if ($store !== null) {
                 try {
                     $xmp = $store->readMetadata($file);
@@ -299,7 +297,12 @@ class RatingController extends Controller
         try {
             $this->tagService->clearAll((string) $fileId);
 
-            $this->writeXmp($file, ['rating' => 0, 'color' => null, 'pick' => 'none'], $this->userSettings->getSettings($userId));
+            // Non-fatal wie in set(): die Tags sind schon zurückgesetzt
+            try {
+                $this->writeXmp($file, ['rating' => 0, 'color' => null, 'pick' => 'none'], $this->userSettings->getSettings($userId));
+            } catch (\Exception $e) {
+                $this->logger->warning("StarRate: XMP reset skipped for {$fileId}: " . $e->getMessage());
+            }
 
             return new DataResponse(['ok' => true]);
         } catch (\Exception $e) {
@@ -370,21 +373,6 @@ class RatingController extends Controller
     // ─── Hilfsmethoden ────────────────────────────────────────────────────────
 
     /**
-     * Wohin die XMP-Metadaten einer Datei gehören: JPEG → eingebettet (ExifService),
-     * RAW → Sidecar neben der Datei (SidecarService). null = gar nicht lesen/schreiben.
-     */
-    private function xmpStore(File $file, array $settings): ExifService|SidecarService|null
-    {
-        if (!$settings['write_xmp']) {
-            return null;
-        }
-        if (in_array($file->getMimeType(), ['image/jpeg', 'image/jpg'], true)) {
-            return $this->exifService;
-        }
-        return SidecarService::appliesTo($file, $settings) ? $this->sidecarService : null;
-    }
-
-    /**
      * Schreibt $data (rating/color/pick, nur gesendete Felder) ins XMP der Datei.
      *
      * @return bool false wenn für diese Datei kein XMP geschrieben wird
@@ -392,7 +380,7 @@ class RatingController extends Controller
      */
     private function writeXmp(File $file, array $data, array $settings): bool
     {
-        $store = $this->xmpStore($file, $settings);
+        $store = $this->xmpStores->forFile($file, $settings);
         if ($store === null) {
             return false;
         }

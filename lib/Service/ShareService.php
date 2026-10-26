@@ -55,7 +55,7 @@ class ShareService
         private readonly IDBConnection $db,
         private readonly ExifService     $exifService,
         private readonly UserSettings    $userSettings,
-        private readonly SidecarService  $sidecarService,
+        private readonly XmpStoreResolver $xmpStores,
     ) {}
 
     // ─── Share erstellen / verwalten ─────────────────────────────────────────
@@ -779,15 +779,14 @@ class ShareService
         }
 
         $settings = $this->userSettings->getSettings($ownerId);
-        $isJpeg   = in_array($file->getMimeType(), ['image/jpeg', 'image/jpg'], true);
-        if (!$settings['write_xmp'] || (!$isJpeg && !SidecarService::appliesTo($file, $settings))) {
+        // JPEG → eingebettetes XMP, RAW → Sidecar (gleiche Regel wie Owner-Bewertungen)
+        $store = $this->xmpStores->forFile($file, $settings);
+        if ($store === null) {
             return;
         }
 
         try {
-            // RAW → XMP-Sidecar neben der Datei, JPEG → eingebettetes XMP
-            $writer = $isJpeg ? $this->exifService : $this->sidecarService;
-            $writer->writeMetadata($file, $rating, $color, $pick, $settings['xmp_label_language']);
+            $store->writeMetadata($file, $rating, $color, $pick, $settings['xmp_label_language']);
         } catch (\Exception $e) {
             $this->logger->warning("StarRate: Gast-XMP-Write übersprungen für {$fileId}: " . $e->getMessage());
         }

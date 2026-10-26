@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\StarRate\AppInfo;
 
 use OCA\StarRate\Listener\NodeDeletedListener;
+use OCA\StarRate\Listener\RawSidecarListener;
 use OCA\StarRate\Preview\RawPreviewProvider;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -13,6 +14,7 @@ use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\Events\Node\NodeDeletedEvent;
+use OCP\Files\Events\Node\NodeRenamedEvent;
 use OCP\Util;
 
 class Application extends App implements IBootstrap
@@ -27,6 +29,9 @@ class Application extends App implements IBootstrap
     public function register(IRegistrationContext $context): void
     {
         $context->registerEventListener(NodeDeletedEvent::class, NodeDeletedListener::class);
+        // XMP-Sidecars folgen ihrer RAW (Löschen / Umbenennen / Verschieben)
+        $context->registerEventListener(NodeDeletedEvent::class, RawSidecarListener::class);
+        $context->registerEventListener(NodeRenamedEvent::class, RawSidecarListener::class);
         // RAW-Vorschauen (NEF & Co.) aus dem eingebetteten Kamera-JPEG
         $context->registerPreviewProvider(RawPreviewProvider::class, RawPreviewProvider::MIME_REGEX);
     }

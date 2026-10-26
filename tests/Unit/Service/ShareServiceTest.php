@@ -7,6 +7,7 @@ namespace OCA\StarRate\Tests\Unit\Service;
 use OCA\StarRate\Service\ExifService;
 use OCA\StarRate\Service\ShareService;
 use OCA\StarRate\Service\SidecarService;
+use OCA\StarRate\Service\XmpStoreResolver;
 use OCA\StarRate\Service\TagService;
 use OCA\StarRate\Settings\UserSettings;
 use OCP\Files\File;
@@ -58,7 +59,7 @@ class ShareServiceTest extends TestCase
             $this->db,
             $this->createMock(ExifService::class),
             $this->createMock(UserSettings::class),
-            $this->createMock(SidecarService::class),
+            $this->createMock(XmpStoreResolver::class),
         );
     }
 
@@ -823,7 +824,7 @@ class ShareServiceTest extends TestCase
             $this->createMock(IDBConnection::class),
             $exif,
             $userSettings,
-            $this->createMock(SidecarService::class),
+            new XmpStoreResolver($exif, $this->createMock(SidecarService::class)),
         );
     }
 
@@ -924,7 +925,7 @@ class ShareServiceTest extends TestCase
             $this->createMock(IDBConnection::class),
             $this->createMock(ExifService::class),
             $userSettings,
-            $this->createMock(SidecarService::class),
+            $this->createMock(XmpStoreResolver::class),
         );
     }
 
@@ -948,7 +949,7 @@ class ShareServiceTest extends TestCase
             $this->createMock(IDBConnection::class),
             $exif,
             $userSettings,
-            $sidecar ?? $this->createMock(SidecarService::class),
+            new XmpStoreResolver($exif, $sidecar ?? $this->createMock(SidecarService::class)),
         );
     }
 

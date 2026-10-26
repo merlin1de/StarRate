@@ -18,7 +18,7 @@ use Psr\Log\LoggerInterface;
  * Schreibt: xmp:Rating (0–5), xmp:Label + photoshop:LabelColor,
  *           xmpDM:pick + xmpDM:good (Pick/Reject, LRC/Bridge-kompatibel).
  */
-class ExifService
+class ExifService implements XmpStore
 {
     // XMP-Namespace-Marker im JPEG
     private const XMP_MARKER     = "\xFF\xE1";
@@ -186,7 +186,7 @@ class ExifService
         if ($xmp !== null && !str_contains($xmp, '<rdf:Description')) {
             throw new \RuntimeException('XMP packet has no rdf:Description block.');
         }
-        return $this->applyMetadataToXmp($xmp, $rating, $label, $pick, $lang);
+        return $this->applyMetadataToXmp($xmp, $rating, $label, $pick, $lang, strict: true);
     }
 
     /**
@@ -221,14 +221,15 @@ class ExifService
 
     /**
      * Wendet Rating, Label und Pick auf einen XMP-Block an (null = neues Paket bauen).
+     * $strict: ein vorhandener Block wird nie durch ein frisches Paket ersetzt.
      */
-    private function applyMetadataToXmp(?string $xmpBlock, ?int $rating, ?string $label, ?string $pick, string $lang): string
+    private function applyMetadataToXmp(?string $xmpBlock, ?int $rating, ?string $label, ?string $pick, string $lang, bool $strict = false): string
     {
         $existing = $xmpBlock !== null ? $this->parseXmp($xmpBlock) : self::emptyResult();
         $merged   = $this->mergeXmpData($existing, $rating, $label, $pick);
 
         return $xmpBlock !== null
-            ? $this->patchXmpString($xmpBlock, $merged['rating'], $merged['label'], $merged['pick'], $lang)
+            ? $this->patchXmpString($xmpBlock, $merged['rating'], $merged['label'], $merged['pick'], $lang, $strict)
             : $this->buildXmpPacket($merged['rating'], $merged['label'], $merged['pick'], $lang);
     }
 
@@ -240,8 +241,14 @@ class ExifService
      * Schreibt immer in Attribut-Form zurück, konsistent mit dem Prefix der Datei.
      * Bei Multi-Block-XMP wird der Block mit der xmlns:xmp/xap-Deklaration gezielt befüllt.
      */
-    private function patchXmpString(string $existingXmp, int $rating, ?string $label, ?string $pick = 'none', string $lang = XmpService::LABEL_LANG_EN): string
-    {
+    private function patchXmpString(
+        string $existingXmp,
+        int $rating,
+        ?string $label,
+        ?string $pick = 'none',
+        string $lang = XmpService::LABEL_LANG_EN,
+        bool $strict = false,
+    ): string {
         $patched = $existingXmp;
 
         // Vorhandene Rating-, Label- und Pick-Felder entfernen.
@@ -249,20 +256,31 @@ class ExifService
         // ein veralteter Wert stehen und LR/Bridge würde beim Re-Import unsere Änderung ignorieren.
         // Altes flashView:IsPicked/IsRejected (inkl. xmlns:flashView) wird aktiv aufgeräumt
         // — neues Schema ist xmpDM:pick (Bridge/LRC-Standard).
-        $patched = preg_replace('/[ \t]*(?:xmp|xap):Rating\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $patched) ?? $patched;
-        $patched = preg_replace('/<(?:xmp|xap):Rating>[^<]*<\/(?:xmp|xap):Rating>\s*/',    '', $patched) ?? $patched;
-        $patched = preg_replace('/[ \t]*(?:xmp|xap):Label\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $patched) ?? $patched;
-        $patched = preg_replace('/<(?:xmp|xap):Label>[^<]*<\/(?:xmp|xap):Label>\s*/',      '', $patched) ?? $patched;
-        $patched = preg_replace('/[ \t]*photoshop:LabelColor\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $patched) ?? $patched;
-        $patched = preg_replace('/<photoshop:LabelColor>[^<]*<\/photoshop:LabelColor>\s*/',  '', $patched) ?? $patched;
-        $patched = preg_replace('/[ \t]*xmpDM:pick\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $patched) ?? $patched;
-        $patched = preg_replace('/<xmpDM:pick>[^<]*<\/xmpDM:pick>\s*/',             '', $patched) ?? $patched;
-        $patched = preg_replace('/[ \t]*xmpDM:good\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $patched) ?? $patched;
-        $patched = preg_replace('/<xmpDM:good>[^<]*<\/xmpDM:good>\s*/',             '', $patched) ?? $patched;
-        $patched = preg_replace('/[ \t]*flashView:Is(?:Picked|Rejected)\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $patched) ?? $patched;
-        $patched = preg_replace('/<flashView:Is(?:Picked|Rejected)>[^<]*<\/flashView:Is(?:Picked|Rejected)>\s*/', '', $patched) ?? $patched;
-        // Verwaiste flashView-Namespace-Deklaration entfernen (Whitespace-Linie + Attribut)
-        $patched = preg_replace('/[ \t]*xmlns:flashView\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $patched) ?? $patched;
+        $stripPatterns = [
+            '/[ \t]*(?:xmp|xap):Rating\s*=\s*(?:"[^"]*"|\'[^\']*\')/',
+            '/<(?:xmp|xap):Rating>[^<]*<\/(?:xmp|xap):Rating>\s*/',
+            '/[ \t]*(?:xmp|xap):Label\s*=\s*(?:"[^"]*"|\'[^\']*\')/',
+            '/<(?:xmp|xap):Label>[^<]*<\/(?:xmp|xap):Label>\s*/',
+            '/[ \t]*photoshop:LabelColor\s*=\s*(?:"[^"]*"|\'[^\']*\')/',
+            '/<photoshop:LabelColor>[^<]*<\/photoshop:LabelColor>\s*/',
+            '/[ \t]*xmpDM:pick\s*=\s*(?:"[^"]*"|\'[^\']*\')/',
+            '/<xmpDM:pick>[^<]*<\/xmpDM:pick>\s*/',
+            '/[ \t]*xmpDM:good\s*=\s*(?:"[^"]*"|\'[^\']*\')/',
+            '/<xmpDM:good>[^<]*<\/xmpDM:good>\s*/',
+            '/[ \t]*flashView:Is(?:Picked|Rejected)\s*=\s*(?:"[^"]*"|\'[^\']*\')/',
+            '/<flashView:Is(?:Picked|Rejected)>[^<]*<\/flashView:Is(?:Picked|Rejected)>\s*/',
+            // Verwaiste flashView-Namespace-Deklaration entfernen (Whitespace-Linie + Attribut)
+            '/[ \t]*xmlns:flashView\s*=\s*(?:"[^"]*"|\'[^\']*\')/',
+        ];
+        $pcreFailed = false;
+        foreach ($stripPatterns as $pattern) {
+            $result = preg_replace($pattern, '', $patched);
+            if ($result === null) {
+                $pcreFailed = true;
+                continue;
+            }
+            $patched = $result;
+        }
 
         // Richtigen Block finden: der mit xmlns:xmp= oder xmlns:xap= Deklaration.
         // Bei Multi-Block-XMP (exiftool, FujiFilm etc.) sitzt xmp: oft nicht in Block 1.
@@ -315,6 +333,12 @@ class ExifService
             -1,
             $count
         );
+
+        // Strikt (RAW-Sidecar): nie ersetzen — das Paket kann eine Lightroom-Entwicklung
+        // enthalten. Lieber gar nicht schreiben als Entwicklungseinstellungen verlieren.
+        if ($strict && ($injected === null || $count === 0 || $pcreFailed)) {
+            throw new \RuntimeException('XMP packet could not be patched safely; left untouched.');
+        }
 
         // Fallback: kein rdf:Description gefunden oder Regex-Fehler → frisches XMP
         if ($injected === null || $count === 0) {

@@ -8,6 +8,7 @@ use OCA\StarRate\Controller\RatingController;
 use OCA\StarRate\Service\ExifService;
 use OCA\StarRate\Service\ShareService;
 use OCA\StarRate\Service\SidecarService;
+use OCA\StarRate\Service\XmpStoreResolver;
 use OCA\StarRate\Service\TagService;
 use OCA\StarRate\Settings\UserSettings;
 use OCP\AppFramework\Http;
@@ -43,6 +44,7 @@ class RatingControllerTest extends TestCase
     private LoggerInterface $logger;
     /** @var SidecarService&MockObject */
     private SidecarService $sidecarService;
+    private XmpStoreResolver $xmpStores;
 
     private const USER_ID = 'testuser';
     private const FILE_ID = 1234;
@@ -58,6 +60,7 @@ class RatingControllerTest extends TestCase
         $this->shareService = $this->createMock(ShareService::class);
         $this->logger       = $this->createMock(LoggerInterface::class);
         $this->sidecarService = $this->createMock(SidecarService::class);
+        $this->xmpStores      = new XmpStoreResolver($this->exifService, $this->sidecarService);
 
         $user = $this->createMock(IUser::class);
         $user->method('getUID')->willReturn(self::USER_ID);
@@ -77,11 +80,10 @@ class RatingControllerTest extends TestCase
             $this->rootFolder,
             $this->userSession,
             $this->tagService,
-            $this->exifService,
+            $this->xmpStores,
             $this->userSettings,
             $this->shareService,
             $this->logger,
-            $this->sidecarService,
         );
     }
 
@@ -92,6 +94,7 @@ class RatingControllerTest extends TestCase
         $file = $this->createMock(File::class);
         $file->method('getMimeType')->willReturn($mime);
         $file->method('getId')->willReturn($fileId);
+        $file->method('getName')->willReturn($mime === 'image/x-dcraw' ? 'DSC_0001.NEF' : 'IMG_0001.jpg');
 
         $userFolder = $this->createMock(Folder::class);
         $userFolder->method('getById')->with($fileId)->willReturn([$file]);
@@ -240,8 +243,8 @@ class RatingControllerTest extends TestCase
         ]);
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
-            $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
+            $this->userSession, $this->tagService, $this->xmpStores,
+            $this->userSettings, $this->shareService, $this->logger,
         );
 
         $this->mockFileById(self::FILE_ID);
@@ -561,8 +564,8 @@ class RatingControllerTest extends TestCase
 
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
-            $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
+            $this->userSession, $this->tagService, $this->xmpStores,
+            $this->userSettings, $this->shareService, $this->logger,
         );
 
         $response = $controller->getComment(self::FILE_ID);
@@ -604,8 +607,8 @@ class RatingControllerTest extends TestCase
 
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
-            $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
+            $this->userSession, $this->tagService, $this->xmpStores,
+            $this->userSettings, $this->shareService, $this->logger,
         );
 
         $this->mockJsonBody(['comment' => 'Test']);
@@ -635,8 +638,8 @@ class RatingControllerTest extends TestCase
 
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
-            $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
+            $this->userSession, $this->tagService, $this->xmpStores,
+            $this->userSettings, $this->shareService, $this->logger,
         );
 
         $response = $controller->deleteComment(self::FILE_ID);
@@ -652,10 +655,9 @@ class RatingControllerTest extends TestCase
 
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
-            $this->userSession, $this->tagService, $this->exifService,
+            $this->userSession, $this->tagService, $this->xmpStores,
             $this->userSettings, $this->shareService,
             $this->createMock(LoggerInterface::class),
-            $this->sidecarService,
         );
 
         $response = $controller->get(self::FILE_ID);
@@ -696,6 +698,17 @@ class RatingControllerTest extends TestCase
         $this->assertSame(5, $this->controller->get(self::FILE_ID)->getData()['rating']);
     }
 
+    public function testDeleteSurvivesSidecarWriteFailure(): void
+    {
+        // Tags sind schon zurückgesetzt — ein gesperrtes Sidecar darf kein 500 auslösen
+        $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
+        $this->tagService->expects($this->once())->method('clearAll');
+        $this->sidecarService->method('writeMetadata')->willThrowException(new \RuntimeException('read-only'));
+
+        $response = $this->controller->delete(self::FILE_ID);
+        $this->assertSame(Http::STATUS_OK, $response->getStatus());
+    }
+
     public function testRawSidecarCanBeDisabled(): void
     {
         $this->userSettings = $this->createMock(UserSettings::class);
@@ -704,8 +717,8 @@ class RatingControllerTest extends TestCase
         ]);
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,
-            $this->userSession, $this->tagService, $this->exifService,
-            $this->userSettings, $this->shareService, $this->logger, $this->sidecarService,
+            $this->userSession, $this->tagService, $this->xmpStores,
+            $this->userSettings, $this->shareService, $this->logger,
         );
         $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
         $this->mockJsonBody(['rating' => 2]);
