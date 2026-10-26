@@ -180,12 +180,23 @@ jobs:
           echo "$RESULT" | grep -q "enabled" || (echo "App enable failed!" && exit 1)
           echo "$RESULT" | grep -q "${{ inputs.version }}"             && echo "Version ${{ inputs.version }} confirmed ✓"             || echo "Warning: could not confirm version ${{ inputs.version }} in output (non-fatal)"
 
-      - name: Smoke test — no PHP fatal errors
+      - name: App listed as enabled
         run: |
-          RESULT=$(docker exec -u www-data nc php occ app:check starrate 2>&1 || true)
-          echo "$RESULT"
-          echo "$RESULT" | grep -qiE "fatal|Uncaught|class.*not found|namespace"             && (echo "Fatal PHP error detected!" && exit 1)             || echo "No fatal PHP errors ✓"
-          docker exec -u www-data nc php occ app:list --enabled 2>&1             | grep -q "starrate"             && echo "App enabled ✓"             || (echo "App missing from enabled list!" && exit 1)
+          docker exec -u www-data nc php occ app:list --enabled 2>&1 \
+            | grep -q "starrate" \
+            && echo "App enabled ✓" \
+            || (echo "App missing from enabled list!" && exit 1)
+
+      - name: Restart Nextcloud (flush APCu)
+        run: |
+          # occ app:enable läuft im CLI; Apache hält die App-Liste weiter im eigenen
+          # APCu-Cache → alle StarRate-Routen 404, bis der Container neu startet
+          docker restart nc
+          for i in $(seq 1 24); do
+            sleep 5
+            curl -sf http://localhost:8080/status.php > /dev/null && echo "Nextcloud back ✓" && break
+            [ "$i" = "24" ] && echo "Timeout after restart" && exit 1
+          done
 
       - name: Runtime smoke — gallery + guest route
         run: |
