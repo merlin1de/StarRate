@@ -96,6 +96,19 @@ class RawPreviewExtractor
     }
 
     /**
+     * MIME-Liste für Filecache-Abfragen: ohne show_raw gar nicht erst nach RAWs
+     * fragen — sonst verbrauchen sie das LIMIT der rekursiven Abfrage, bevor sie
+     * aussortiert werden, und JPEGs fielen still heraus.
+     *
+     * @param  list<string> $mimes
+     * @return list<string>
+     */
+    public static function queryMimes(array $mimes, bool $showRaw): array
+    {
+        return $showRaw ? $mimes : array_values(array_diff($mimes, [self::MIME]));
+    }
+
+    /**
      * Liefert ein JPEG (Bytes) von höchstens $maxX × $maxY, korrekt orientiert,
      * oder null, wenn die Datei keine brauchbare Vorschau enthält.
      */

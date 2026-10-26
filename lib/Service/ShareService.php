@@ -1110,7 +1110,10 @@ class ShareService
             ->innerJoin('fc', 'mimetypes', 'mt', $qb->expr()->eq('mt.id', 'fc.mimetype'))
             ->where($qb->expr()->eq('fc.storage', $qb->createNamedParameter($storageId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->like('fc.path', $qb->createNamedParameter($pathPrefix)))
-            ->andWhere($qb->expr()->in('mt.mimetype', $qb->createNamedParameter(self::GUEST_MIME, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_STR_ARRAY)))
+            ->andWhere($qb->expr()->in('mt.mimetype', $qb->createNamedParameter(
+                RawPreviewExtractor::queryMimes(self::GUEST_MIME, $showRaw),
+                \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_STR_ARRAY,
+            )))
             // Hidden-Pfade ausschließen — sicherheitskritisch
             ->andWhere($qb->expr()->notLike('fc.path', $qb->createNamedParameter('%/.%')))
             ->setMaxResults($RECURSIVE_HARD_LIMIT);

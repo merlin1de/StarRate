@@ -250,6 +250,9 @@ class RawPreviewExtractorTest extends TestCase
     {
         $this->assertFalse(RawPreviewExtractor::isListable('image/x-dcraw', 'a.NEF', false));
         $this->assertTrue(RawPreviewExtractor::isListable('image/jpeg', 'a.jpg', false));
+        // Ohne show_raw gar nicht erst nach RAWs fragen (LIMIT der rekursiven Abfrage)
+        $this->assertSame(['image/jpeg'], RawPreviewExtractor::queryMimes(['image/jpeg', 'image/x-dcraw'], false));
+        $this->assertSame(['image/jpeg', 'image/x-dcraw'], RawPreviewExtractor::queryMimes(['image/jpeg', 'image/x-dcraw'], true));
     }
 
     public function testSupportsOnlyFormatsWithKnownPreviewLocation(): void

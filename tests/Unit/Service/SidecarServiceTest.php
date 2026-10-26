@@ -182,6 +182,31 @@ XMP;
         $this->assertSame(['rating' => 4, 'label' => 'Red', 'pick' => 'pick'], $this->service->readMetadata($raw));
     }
 
+    public function testExistingSidecarWithoutRatingTakesRatingFromDb(): void
+    {
+        // Lightroom-Sidecar nur mit Entwicklung (kein xmp:Rating), DB hat 4★:
+        // ein reines Farb-Update darf nicht Rating=0 schreiben
+        $this->db['42'] = ['rating' => 4, 'color' => null, 'pick' => 'none'];
+        $developOnly = str_replace("    xmp:Rating=\"2\"\n", '', self::LR_SIDECAR);
+        $files = ['DSC_0001.xmp' => $developOnly];
+        $raw   = $this->rawInFolder('DSC_0001.NEF', $files);
+
+        $this->service->writeMetadata($raw, null, 'Red', null);
+        $this->assertSame(['rating' => 4, 'label' => 'Red', 'pick' => 'none'], $this->service->readMetadata($raw));
+        $this->assertStringContainsString('crs:Exposure2012="+0.35"', $files['DSC_0001.xmp']);
+    }
+
+    public function testExistingSidecarRatingWinsOverDb(): void
+    {
+        // Steht ein Rating im Sidecar (z.B. aus Lightroom), gilt das — nicht die DB
+        $this->db['42'] = ['rating' => 4, 'color' => null, 'pick' => 'none'];
+        $files = ['DSC_0001.xmp' => self::LR_SIDECAR];
+        $raw   = $this->rawInFolder('DSC_0001.NEF', $files);
+
+        $this->service->writeMetadata($raw, null, 'Red', null);
+        $this->assertSame(2, $this->service->readMetadata($raw)['rating']);
+    }
+
     public function testDoesNotCreateEmptySidecar(): void
     {
         $files = [];
@@ -295,6 +320,24 @@ XMP;
         $this->service->writeMetadata($raws[5], 4, null, null);
         $this->assertCount(6, $files);
         $this->assertSame(4, $this->service->readMetadata($raws[5])['rating']);
+    }
+
+    public function testBulkDeleteKeepsFolderListing(): void
+    {
+        // Mehrfach-Löschen: das Ordner-Listing darf nicht nach jedem Sidecar neu geladen werden
+        $files = [];
+        foreach (range(1, 10) as $i) {
+            $files[sprintf('DSC_%04d.xmp', $i)] = self::LR_SIDECAR;
+        }
+        $folder = $this->folder($files);
+        foreach (range(1, 10) as $i) {
+            $raw = $this->createMock(File::class);
+            $raw->method('getName')->willReturn(sprintf('DSC_%04d.NEF', $i));
+            $raw->method('getParent')->willReturn($folder);
+            $this->service->deleteSidecarOf($raw);
+        }
+        $this->assertSame([], $files);
+        $this->assertSame(1, $this->listings);
     }
 
     public function testDeleteSidecarOfRemovesMatchingSidecarOnly(): void

@@ -96,10 +96,11 @@ class SidecarService implements XmpStore
     /**
      * Semantik wie ExifService::writeMetadata() (null = unverändert, '' / 'none' = entfernen).
      *
-     * Ein vorhandenes Sidecar wird gepatcht. Ein neues (oder leeres) startet vom
-     * aktuellen DB-Stand — sonst würde z.B. ein reines Farb-Update Rating=0 schreiben
-     * und das Self-Healing danach das DB-Rating überschreiben. Ein Sidecar ohne
-     * Bewertung wird nicht neu angelegt (z.B. beim Zurücksetzen).
+     * Ein vorhandenes Sidecar wird gepatcht; Felder, die darin ganz fehlen (z.B. ein
+     * Lightroom-Sidecar nur mit Entwicklung), kommen aus der DB. Ein neues (oder
+     * leeres) startet komplett vom DB-Stand — sonst würde ein reines Farb-Update
+     * Rating=0 schreiben und das Self-Healing danach das DB-Rating überschreiben.
+     * Ein Sidecar ohne Bewertung wird nicht neu angelegt (z.B. beim Zurücksetzen).
      *
      * @throws \RuntimeException wenn das Sidecar nicht geschrieben werden kann
      */
@@ -113,6 +114,13 @@ class SidecarService implements XmpStore
         $sidecar = $this->findSidecar($file);
         $content = $sidecar?->getContent() ?? '';
         if (trim($content) !== '') {
+            $missing = $this->missingFields($content, $rating, $label, $pick);
+            if ($missing !== []) {
+                $db      = $this->tagService->getMetadata((string) $file->getId());
+                $rating  = in_array('rating', $missing, true) ? $db['rating'] : $rating;
+                $label   = in_array('label', $missing, true) ? ($db['color'] ?? '') : $label;
+                $pick    = in_array('pick', $missing, true) ? $db['pick'] : $pick;
+            }
             $sidecar->putContent($this->exifService->writeMetadataToXmp($content, $rating, $label, $pick, $lang));
             return;
         }
@@ -150,7 +158,7 @@ class SidecarService implements XmpStore
         if ($sidecar === null) {
             return;
         }
-        $this->forgetListing($sidecar);
+        $this->forgetListed($sidecar);
         $sidecar->delete();
     }
 
@@ -172,8 +180,32 @@ class SidecarService implements XmpStore
         if ($newPath === $sidecar->getPath() || $parent->nodeExists($newName)) {
             return;
         }
-        $this->forgetListing($sidecar);
-        $sidecar->move($newPath);
+        $this->forgetListed($sidecar);
+        $moved = $sidecar->move($newPath);
+        if ($moved instanceof File && isset($this->listings[$parent->getId()])) {
+            $this->listings[$parent->getId()][$newName] = $moved;
+        }
+    }
+
+    /**
+     * Welche nicht mitgeschickten Felder (null) im Sidecar gar nicht vorkommen —
+     * die sollen aus der DB kommen statt als „leer“ geschrieben zu werden.
+     *
+     * @return list<'rating'|'label'|'pick'>
+     */
+    private function missingFields(string $xmp, ?int $rating, ?string $label, ?string $pick): array
+    {
+        $missing = [];
+        if ($rating === null && !preg_match('/(?:xmp|xap):Rating\b/', $xmp)) {
+            $missing[] = 'rating';
+        }
+        if ($label === null && !preg_match('/(?:xmp|xap):Label\b|photoshop:LabelColor\b/', $xmp)) {
+            $missing[] = 'label';
+        }
+        if ($pick === null && !preg_match('/xmpDM:pick\b/', $xmp)) {
+            $missing[] = 'pick';
+        }
+        return $missing;
     }
 
     private function findSidecar(File $raw): ?File
@@ -228,10 +260,11 @@ class SidecarService implements XmpStore
         return $this->listings[$id] = $map;
     }
 
-    private function forgetListing(File $sidecar): void
+    /** Nur den einen Eintrag aus dem Ordner-Listing nehmen (nicht das ganze Listing verwerfen). */
+    private function forgetListed(File $sidecar): void
     {
         try {
-            unset($this->listings[$sidecar->getParent()->getId()]);
+            unset($this->listings[$sidecar->getParent()->getId()][$sidecar->getName()]);
         } catch (NotFoundException) {
             // Ordner weg → kein Cache-Eintrag mehr relevant
         }
