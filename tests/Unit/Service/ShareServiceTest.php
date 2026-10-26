@@ -6,6 +6,8 @@ namespace OCA\StarRate\Tests\Unit\Service;
 
 use OCA\StarRate\Service\ExifService;
 use OCA\StarRate\Service\ShareService;
+use OCA\StarRate\Service\SidecarService;
+use OCA\StarRate\Service\XmpStoreResolver;
 use OCA\StarRate\Service\TagService;
 use OCA\StarRate\Settings\UserSettings;
 use OCP\Files\File;
@@ -57,6 +59,7 @@ class ShareServiceTest extends TestCase
             $this->db,
             $this->createMock(ExifService::class),
             $this->createMock(UserSettings::class),
+            $this->createMock(XmpStoreResolver::class),
         );
     }
 
@@ -498,9 +501,28 @@ class ShareServiceTest extends TestCase
         $us = $this->createMock(UserSettings::class);
         $us->method('getSettings')->willReturn([
             'write_xmp'          => $writeXmp,
+            'show_raw'           => true,
+            'write_raw_sidecar'  => true,
             'xmp_label_language' => $lang,
         ]);
         return $us;
+    }
+
+    public function testSaveGuestRatingOnRawWritesSidecarNotJpegXmp(): void
+    {
+        $share = ['token' => self::SAMPLE_TOKEN, 'owner_id' => self::OWNER_ID];
+
+        $nef = $this->createMock(File::class);
+        $nef->method('getMimeType')->willReturn('image/x-dcraw');
+        $nef->method('getName')->willReturn('DSC_0001.NEF');
+
+        $exif = $this->createMock(ExifService::class);
+        $exif->expects($this->never())->method('writeMetadata');
+        $sidecar = $this->createMock(SidecarService::class);
+        $sidecar->expects($this->once())->method('writeMetadata')->with($nef, 4, 'Green', null, 'en');
+
+        $service = $this->makeServiceForXmp($this->rootFolderReturning($nef), $exif, $this->settingsMock(true), $sidecar);
+        $service->saveGuestRating($share, 42, 4, 'Green', null, 'Anna');
     }
 
     // ─── Tests: Altbestands-Heilung (foldGuestLog / healGuestXmp) ─────────────
@@ -803,6 +825,7 @@ class ShareServiceTest extends TestCase
             $this->createMock(IDBConnection::class),
             $exif,
             $userSettings,
+            new XmpStoreResolver($exif, $this->createMock(SidecarService::class)),
         );
     }
 
@@ -845,6 +868,21 @@ class ShareServiceTest extends TestCase
         $this->assertSame(['a.jpg', 'b.jpg'], array_column($result['images'], 'name'));
     }
 
+    public function testGetImagesForShareShowsRawsOnlyWhenOwnerEnabledThem(): void
+    {
+        $files = ['a.jpg' => [10, 100], 'a.NEF' => [10, 900], 'b.MRW' => [10, 900]];
+        $share = ['owner_id' => self::OWNER_ID, 'nc_path' => '/Fotos', 'min_rating' => 0];
+
+        $off = $this->makeServiceForImages($this->folderWithImages($files), $this->sortSettings('name', 'asc'));
+        $this->assertSame(['a.jpg'], array_column($off->getImagesForShare($share, '')['images'], 'name'));
+
+        $us = $this->createMock(UserSettings::class);
+        $us->method('getSettings')->willReturn(['default_sort' => 'name', 'default_sort_order' => 'asc', 'show_raw' => true]);
+        $on = $this->makeServiceForImages($this->folderWithImages($files), $us);
+        // MRW: keine Vorschau auffindbar → nie gelistet
+        $this->assertSame(['a.jpg', 'a.NEF'], array_column($on->getImagesForShare($share, '')['images'], 'name'));
+    }
+
     /**
      * Baut eine IRootFolder, deren User-Folder->get() einen Ordner mit den
      * gegebenen Bildern (name => [mtime, size]) in genau dieser Reihenfolge liefert.
@@ -861,7 +899,9 @@ class ShareServiceTest extends TestCase
             $file->method('getName')->willReturn($name);
             $file->method('getMtime')->willReturn($mtime);
             $file->method('getSize')->willReturn($size);
-            $file->method('getMimeType')->willReturn('image/jpeg');
+            $file->method('getMimeType')->willReturn(
+                str_ends_with(strtolower($name), '.jpg') ? 'image/jpeg' : 'image/x-dcraw'
+            );
             $nodes[] = $file;
         }
         $folder = $this->createMock(Folder::class);
@@ -903,11 +943,16 @@ class ShareServiceTest extends TestCase
             $this->createMock(IDBConnection::class),
             $this->createMock(ExifService::class),
             $userSettings,
+            $this->createMock(XmpStoreResolver::class),
         );
     }
 
-    private function makeServiceForXmp(IRootFolder $rootFolder, ExifService $exif, UserSettings $userSettings): ShareService
-    {
+    private function makeServiceForXmp(
+        IRootFolder $rootFolder,
+        ExifService $exif,
+        UserSettings $userSettings,
+        ?SidecarService $sidecar = null,
+    ): ShareService {
         $config = $this->createMock(IConfig::class);
         $config->method('getUserValue')->willReturn('[]');
         $config->method('setUserValue');
@@ -922,6 +967,7 @@ class ShareServiceTest extends TestCase
             $this->createMock(IDBConnection::class),
             $exif,
             $userSettings,
+            new XmpStoreResolver($exif, $sidecar ?? $this->createMock(SidecarService::class)),
         );
     }
 

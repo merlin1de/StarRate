@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace OCA\StarRate\Controller;
 
-use OCA\StarRate\Service\ExifService;
 use OCA\StarRate\Service\ShareService;
 use OCA\StarRate\Service\TagService;
+use OCA\StarRate\Service\XmpStoreResolver;
 use OCA\StarRate\Settings\UserSettings;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -28,7 +28,7 @@ class RatingController extends Controller
         private readonly IRootFolder  $rootFolder,
         private readonly IUserSession $userSession,
         private readonly TagService   $tagService,
-        private readonly ExifService  $exifService,
+        private readonly XmpStoreResolver $xmpStores,
         private readonly UserSettings $userSettings,
         private readonly ShareService $shareService,
         private readonly LoggerInterface $logger,
@@ -68,12 +68,11 @@ class RatingController extends Controller
             $fileIdStr = (string) $fileId;
             $db        = $this->tagService->getMetadata($fileIdStr);
 
-            // Self-healing nur bei JPEG + write_xmp setting on (User hat XMP-as-master akzeptiert)
-            $mime     = $file->getMimeType();
-            $settings = $this->userSettings->getSettings($userId);
-            if ($settings['write_xmp'] && in_array($mime, ['image/jpeg', 'image/jpg'], true)) {
+            // Self-healing nur bei JPEG / RAW-Sidecar + write_xmp setting on (User hat XMP-as-master akzeptiert)
+            $store = $this->xmpStores->forFile($file, $this->userSettings->getSettings($userId));
+            if ($store !== null) {
                 try {
-                    $xmp = $this->exifService->readMetadata($file);
+                    $xmp = $store->readMetadata($file);
 
                     // Konservative Heuristik: nur synchen, wenn das XMP tatsächlich etwas
                     // enthält. Reines "alles leer" interpretieren wir als "Datei hat keine
@@ -162,21 +161,11 @@ class RatingController extends Controller
             // 1. NC-Tags setzen
             $this->tagService->setMetadata($fileIdStr, $data);
 
-            // 2. JPEG-XMP schreiben — nur wenn JPEG und in den Einstellungen aktiviert
-            $mime     = $file->getMimeType();
-            $settings = $this->userSettings->getSettings($userId);
-            if (in_array($mime, ['image/jpeg', 'image/jpg'], true) && $settings['write_xmp']) {
-                try {
-                    $this->exifService->writeMetadata(
-                        $file,
-                        $data['rating'] ?? null,
-                        array_key_exists('color', $data) ? ($data['color'] ?? '') : null,
-                        array_key_exists('pick', $data)  ? $data['pick']           : null,
-                        $settings['xmp_label_language'],
-                    );
-                } catch (\Exception $e) {
-                    $this->logger->warning("StarRate: XMP write skipped for {$fileId}: " . $e->getMessage());
-                }
+            // 2. XMP schreiben (JPEG eingebettet / RAW-Sidecar) — nur wenn in den Einstellungen aktiviert
+            try {
+                $this->writeXmp($file, $data, $this->userSettings->getSettings($userId));
+            } catch (\Exception $e) {
+                $this->logger->warning("StarRate: XMP write skipped for {$fileId}: " . $e->getMessage());
             }
 
             // Aktuellen Stand zurückgeben
@@ -244,8 +233,6 @@ class RatingController extends Controller
         $xmpSkipped = 0;
         $details    = [];
         $settings   = $this->userSettings->getSettings($userId);
-        $writeXmp   = $settings['write_xmp'];
-        $labelLang  = $settings['xmp_label_language'];
 
         foreach ($body['fileIds'] as $rawId) {
             $fileId = (int) $rawId;
@@ -261,22 +248,14 @@ class RatingController extends Controller
                 // NC-Tags
                 $this->tagService->setMetadata((string) $fileId, $data);
 
-                // JPEG-XMP — non-fatal, nur wenn in den Einstellungen aktiviert
-                $mime = $file->getMimeType();
-                if (in_array($mime, ['image/jpeg', 'image/jpg'], true) && $writeXmp) {
-                    try {
-                        $this->exifService->writeMetadata(
-                            $file,
-                            $data['rating'] ?? null,
-                            array_key_exists('color', $data) ? ($data['color'] ?? '') : null,
-                            array_key_exists('pick', $data)  ? $data['pick']           : null,
-                            $labelLang,
-                        );
+                // XMP (JPEG eingebettet / RAW-Sidecar) — non-fatal, nur wenn in den Einstellungen aktiviert
+                try {
+                    if ($this->writeXmp($file, $data, $settings)) {
                         $xmpWritten++;
-                    } catch (\Exception $e) {
-                        $xmpSkipped++;
-                        $this->logger->warning("StarRate: XMP write skipped for {$fileId}: " . $e->getMessage());
                     }
+                } catch (\Exception $e) {
+                    $xmpSkipped++;
+                    $this->logger->warning("StarRate: XMP write skipped for {$fileId}: " . $e->getMessage());
                 }
 
                 $updated++;
@@ -318,10 +297,11 @@ class RatingController extends Controller
         try {
             $this->tagService->clearAll((string) $fileId);
 
-            $mime = $file->getMimeType();
-            if (in_array($mime, ['image/jpeg', 'image/jpg'], true)
-                && $this->userSettings->getSettings($userId)['write_xmp']) {
-                $this->exifService->writeMetadata($file, 0, '', 'none');
+            // Non-fatal wie in set(): die Tags sind schon zurückgesetzt
+            try {
+                $this->writeXmp($file, ['rating' => 0, 'color' => null, 'pick' => 'none'], $this->userSettings->getSettings($userId));
+            } catch (\Exception $e) {
+                $this->logger->warning("StarRate: XMP reset skipped for {$fileId}: " . $e->getMessage());
             }
 
             return new DataResponse(['ok' => true]);
@@ -391,6 +371,28 @@ class RatingController extends Controller
     }
 
     // ─── Hilfsmethoden ────────────────────────────────────────────────────────
+
+    /**
+     * Schreibt $data (rating/color/pick, nur gesendete Felder) ins XMP der Datei.
+     *
+     * @return bool false wenn für diese Datei kein XMP geschrieben wird
+     * @throws \Exception wenn das Schreiben fehlschlägt
+     */
+    private function writeXmp(File $file, array $data, array $settings): bool
+    {
+        $store = $this->xmpStores->forFile($file, $settings);
+        if ($store === null) {
+            return false;
+        }
+        $store->writeMetadata(
+            $file,
+            $data['rating'] ?? null,
+            array_key_exists('color', $data) ? ($data['color'] ?? '') : null,
+            array_key_exists('pick', $data)  ? $data['pick']           : null,
+            $settings['xmp_label_language'],
+        );
+        return true;
+    }
 
     private function validateRatingBody(array $body): array
     {

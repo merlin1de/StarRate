@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OCA\StarRate\Controller;
 
+use OCA\StarRate\Service\RawPreviewExtractor;
 use OCA\StarRate\Service\ShareService;
 use OCA\StarRate\Service\TagService;
+use OCA\StarRate\Settings\UserSettings;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -40,6 +42,7 @@ class GalleryController extends Controller
         'image/tiff',
         'image/heic',
         'image/heif',
+        RawPreviewExtractor::MIME,
     ];
 
     // 5 Minuten — Listen werden bei add/remove im Ordner unscharf, der Trade-off
@@ -65,6 +68,7 @@ class GalleryController extends Controller
         private readonly LoggerInterface $logger,
         private readonly ICacheFactory   $cacheFactory,
         private readonly IDBConnection   $db,
+        private readonly UserSettings    $userSettings,
     ) {
         parent::__construct($appName, $request);
     }
@@ -141,7 +145,9 @@ class GalleryController extends Controller
             // Vollständige sortierte Liste — gecached (siehe getListCache()).
             // Metadaten werden bewusst NICHT mit gecached: sie ändern sich
             // häufig (jede Bewertung), die Liste hingegen nur bei add/remove.
-            $allImages = $this->listImagesCached($folder, $userFolder, $sort, $order, $recursive, $depth);
+            // RAWs sind opt-in (show_raw) — eigener Cache-Key je Schalterstellung
+            $showRaw   = !empty($this->userSettings->getSettings($userId)['show_raw']);
+            $allImages = $this->listImagesCached($folder, $userFolder, $sort, $order, $recursive, $depth, $showRaw);
             $total     = count($allImages);
 
             // Pagination-Slicing
@@ -343,13 +349,14 @@ class GalleryController extends Controller
      */
     private function listImagesCached(
         Folder $folder, Folder $userFolder, string $sort, string $order,
-        bool $recursive, int $depth,
+        bool $recursive, int $depth, bool $showRaw,
     ): array {
+        // v3: RAW-MIME-Typ ergänzt, Key enthält show_raw.
         // v2: Cache-Format-Bump — neue Felder (relPath/groupKey) und neuer
         // Recursive-DB-Pfad (anderes path-Format als v1).
         $key = sprintf(
-            'list-v2:%d:%s:%s:r%d:d%d',
-            $folder->getId(), $sort, $order, $recursive ? 1 : 0, $depth,
+            'list-v3:%d:%s:%s:r%d:d%d:raw%d',
+            $folder->getId(), $sort, $order, $recursive ? 1 : 0, $depth, $showRaw ? 1 : 0,
         );
 
         $cached = $this->getListCache()->get($key);
@@ -357,7 +364,7 @@ class GalleryController extends Controller
             return $cached;
         }
 
-        $images = $this->listImages($folder, $userFolder, $sort, $order, $recursive, $depth);
+        $images = $this->listImages($folder, $userFolder, $sort, $order, $recursive, $depth, $showRaw);
         $this->getListCache()->set($key, $images, self::LIST_CACHE_TTL);
         return $images;
     }
@@ -382,7 +389,7 @@ class GalleryController extends Controller
      */
     private function listImages(
         Folder $folder, Folder $userFolder, string $sort, string $order,
-        bool $recursive, int $depth,
+        bool $recursive, int $depth, bool $showRaw,
     ): array {
         $rootPath = $folder->getPath();
         $userBase = $userFolder->getPath();
@@ -396,11 +403,12 @@ class GalleryController extends Controller
             // bei /). Die direkte oc_filecache-Query liefert nur Roh-Rows und
             // baut daraus unsere kompakten Image-Arrays — Faktor ~10× weniger
             // Speicher.
-            $images = $this->listImagesRecursiveFromDb($folder, $userBase, $depth);
+            $images = $this->listImagesRecursiveFromDb($folder, $userBase, $depth, $showRaw);
         } else {
             foreach ($folder->getDirectoryListing() as $node) {
                 if (!($node instanceof File)) continue;
                 if (!in_array($node->getMimeType(), self::SUPPORTED_MIME, true)) continue;
+                if (!RawPreviewExtractor::isListable($node->getMimeType(), $node->getName(), $showRaw)) continue;
                 $images[] = $this->buildImageEntry($node, $rootPath, $userBase, $depth);
             }
         }
@@ -434,7 +442,7 @@ class GalleryController extends Controller
      * 'meine eigenen Fotos rekursiv'-Use-Case und vermeidet permission-
      * Komplexität.
      */
-    private function listImagesRecursiveFromDb(Folder $folder, string $userBase, int $depth): array
+    private function listImagesRecursiveFromDb(Folder $folder, string $userBase, int $depth, bool $showRaw): array
     {
         // Echte (storage, internalPath) des Recursion-Roots direkt aus dem
         // Filecache holen — NICHT aus der gewrappten Node-Sicht. Bei Group
@@ -460,7 +468,10 @@ class GalleryController extends Controller
             ->innerJoin('fc', 'mimetypes', 'mt', $qb->expr()->eq('mt.id', 'fc.mimetype'))
             ->where($qb->expr()->eq('fc.storage', $qb->createNamedParameter($storageId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->like('fc.path', $qb->createNamedParameter($pathPrefix)))
-            ->andWhere($qb->expr()->in('mt.mimetype', $qb->createNamedParameter(self::SUPPORTED_MIME, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_STR_ARRAY)))
+            ->andWhere($qb->expr()->in('mt.mimetype', $qb->createNamedParameter(
+                RawPreviewExtractor::queryMimes(self::SUPPORTED_MIME, $showRaw),
+                \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_STR_ARRAY,
+            )))
             // Hidden-Ordner ausschließen: NC-interne Preview-Caches (.@__thumb,
             // .nc-trash, etc.) liegen im selben Storage, gehören aber nicht in
             // die Galerie. searchByMime hatte das implizit über Permissions,
@@ -483,6 +494,9 @@ class GalleryController extends Controller
 
         $images = [];
         foreach ($rows as $row) {
+            if (!RawPreviewExtractor::isListable($row['mimetype'], $row['name'], $showRaw)) {
+                continue;
+            }
             // Pfad relativ zum Recursion-Root, ohne führenden Slash.
             $relPath = ltrim(substr($row['path'], $rootLen), '/');
 

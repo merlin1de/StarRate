@@ -41,8 +41,9 @@ class ShareService
     private const TOKEN_LENGTH         = 24;
     private const GUEST_LOG_MAX_ENTRIES = 500;
 
-    // Unterstützte MIME-Typen für Gast-Galerie
-    private const GUEST_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    // Unterstützte MIME-Typen für Gast-Galerie. RAW: ausgeliefert wird nur die
+    // Vorschau — die RAW-Datei selbst nur, wenn der Share Downloads erlaubt.
+    private const GUEST_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', RawPreviewExtractor::MIME];
 
     public function __construct(
         private readonly IConfig         $config,
@@ -54,6 +55,7 @@ class ShareService
         private readonly IDBConnection $db,
         private readonly ExifService     $exifService,
         private readonly UserSettings    $userSettings,
+        private readonly XmpStoreResolver $xmpStores,
     ) {}
 
     // ─── Share erstellen / verwalten ─────────────────────────────────────────
@@ -289,6 +291,7 @@ class ShareService
         $settings = $this->userSettings->getSettings($ownerId);
         $sort     = $settings['default_sort']       ?? 'name';
         $order    = $settings['default_sort_order'] ?? 'asc';
+        $showRaw  = !empty($settings['show_raw']);
 
         $userFolder = $this->rootFolder->getUserFolder($ownerId);
 
@@ -305,7 +308,7 @@ class ShareService
                 throw new \RuntimeException("Pfad ist kein Ordner: {$ncPath}");
             }
 
-            $images = $this->listImagesRecursiveForShare($folder, $depth);
+            $images = $this->listImagesRecursiveForShare($folder, $depth, $showRaw);
             // Bei recursive: kein Folder-Listing, der Gast hat keine Navigation
             $folders = [];
         } else {
@@ -336,7 +339,9 @@ class ShareService
                 if (!($node instanceof File)) {
                     continue;
                 }
-                if (!in_array($node->getMimeType(), self::GUEST_MIME, true)) {
+                if (!in_array($node->getMimeType(), self::GUEST_MIME, true)
+                    || !RawPreviewExtractor::isListable($node->getMimeType(), $node->getName(), $showRaw)
+                ) {
                     continue;
                 }
                 $images[] = [
@@ -770,17 +775,19 @@ class ShareService
     private function writeGuestXmp(string $ownerId, int $fileId, ?int $rating, ?string $color, ?string $pick): void
     {
         $file = $this->getOwnerFile($ownerId, $fileId);
-        if ($file === null || !in_array($file->getMimeType(), ['image/jpeg', 'image/jpg'], true)) {
+        if ($file === null) {
             return;
         }
 
         $settings = $this->userSettings->getSettings($ownerId);
-        if (!$settings['write_xmp']) {
+        // JPEG → eingebettetes XMP, RAW → Sidecar (gleiche Regel wie Owner-Bewertungen)
+        $store = $this->xmpStores->forFile($file, $settings);
+        if ($store === null) {
             return;
         }
 
         try {
-            $this->exifService->writeMetadata($file, $rating, $color, $pick, $settings['xmp_label_language']);
+            $store->writeMetadata($file, $rating, $color, $pick, $settings['xmp_label_language']);
         } catch (\Exception $e) {
             $this->logger->warning("StarRate: Gast-XMP-Write übersprungen für {$fileId}: " . $e->getMessage());
         }
@@ -1089,7 +1096,7 @@ class ShareService
      * Limit für Guest 25k wie beim Owner — verhindert Memory-Explosion bei
      * recursive=true auf großen Trees.
      */
-    private function listImagesRecursiveForShare(Folder $folder, int $depth): array
+    private function listImagesRecursiveForShare(Folder $folder, int $depth, bool $showRaw): array
     {
         $RECURSIVE_HARD_LIMIT = 25000;
 
@@ -1103,7 +1110,10 @@ class ShareService
             ->innerJoin('fc', 'mimetypes', 'mt', $qb->expr()->eq('mt.id', 'fc.mimetype'))
             ->where($qb->expr()->eq('fc.storage', $qb->createNamedParameter($storageId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->like('fc.path', $qb->createNamedParameter($pathPrefix)))
-            ->andWhere($qb->expr()->in('mt.mimetype', $qb->createNamedParameter(self::GUEST_MIME, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_STR_ARRAY)))
+            ->andWhere($qb->expr()->in('mt.mimetype', $qb->createNamedParameter(
+                RawPreviewExtractor::queryMimes(self::GUEST_MIME, $showRaw),
+                \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_STR_ARRAY,
+            )))
             // Hidden-Pfade ausschließen — sicherheitskritisch
             ->andWhere($qb->expr()->notLike('fc.path', $qb->createNamedParameter('%/.%')))
             ->setMaxResults($RECURSIVE_HARD_LIMIT);
@@ -1116,6 +1126,9 @@ class ShareService
 
         $images = [];
         foreach ($rows as $row) {
+            if (!RawPreviewExtractor::isListable($row['mimetype'], $row['name'], $showRaw)) {
+                continue;
+            }
             $internalRelative = ltrim(substr($row['path'], strlen($rootInternalPrefix)), '/');
             $images[] = [
                 'id'       => (int) $row['fileid'],
