@@ -11,7 +11,7 @@ StarRate is a professional photo rating and culling tool for photographers, seam
 
 Rate photos with 1–5 stars and color labels, flag picks and rejects with keyboard shortcuts, and share a guest gallery link with your client or model. They pick their favorites in the browser — no Nextcloud account required. Leave comments on individual images for feedback rounds, and export the final rating list as CSV when you're done.
 
-**Ratings are written as XMP metadata directly into the JPEG file.** Open it in Lightroom Classic, digiKam, F-Stop or Darktable — the stars are already there. No re-export, no sidecar files. **Coming from Lightroom?** Import your existing XMP ratings with one `occ` command — your years of curation travel with you.
+**Ratings are written as XMP metadata directly into the JPEG file.** Open it in Lightroom Classic, digiKam, F-Stop or Darktable — the stars are already there. No re-export, no sidecar files. **Shooting RAW?** Turn on camera RAWs and rate NEF, CR3 & Co. right in the grid — StarRate shows the preview the camera embeds and keeps the ratings in a Lightroom-style XMP sidecar, the RAW itself stays untouched. **Coming from Lightroom?** Import your existing XMP ratings with one `occ` command — your years of curation travel with you.
 
 **Browse a whole folder tree at once.** Recursive folder view flattens nested directories into a single sortable, filterable grid — perfect for working through an entire shoot week or a multi-event archive without clicking into every subfolder.
 
@@ -24,6 +24,7 @@ Rate photos with 1–5 stars and color labels, flag picks and rejects with keybo
 - **Recursive folder view** — browse an entire folder tree as a flat stream or grouped by folder depth. Opt-in — enable it once under Personal → StarRate. [How it works](https://github.com/merlin1de/starrate/blob/master/docs/recursive-folders.en.md)
 - **Loupe slideshow mode** — auto-advance with configurable interval, ideal for client presentations
 - XMP metadata written into JPEG — Lightroom / Bridge / digiKam compatible
+- **Camera RAW (opt-in)** — NEF, CR2, CR3, ARW, DNG, ORF, RW2, RAF, PEF in grid, loupe and guest galleries, using the preview the camera embeds (no extra server packages); ratings go into Lightroom-style XMP sidecars that follow the RAW on rename, move and delete
 - Configurable XMP label language: Lightroom (German localization) or Bridge / digiKam / English tools
 - Self-healing XMP read on loupe open — externally-edited files (Lightroom, digiKam) sync their new ratings the next time you click into them, no manual `occ` run needed
 - Import existing XMP ratings from Lightroom/digiKam via `occ starrate:import-xmp` (with `--recursive` for whole folder trees)
@@ -44,7 +45,7 @@ StarRate ist ein professionelles Foto-Bewertungs- und Auswahlwerkzeug für Fotog
 
 Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastaturkürzel markieren, und einen Gast-Link an Kunden oder Models schicken. Die wählen ihre Favoriten im Browser — ohne Nextcloud-Account. Kommentare zu einzelnen Bildern für Feedback-Runden hinterlassen, und die fertige Bewertungsliste am Ende als CSV exportieren.
 
-**Bewertungen werden als XMP-Metadaten direkt in die JPEG-Datei geschrieben.** In Lightroom Classic, digiKam, F-Stop oder Darktable öffnen — die Sterne sind schon da. Kein Re-Export, keine Sidecar-Dateien. **Umstieg von Lightroom?** Bestehende XMP-Bewertungen mit einem `occ`-Befehl importieren — deine Jahre an Kuratierung wandern mit.
+**Bewertungen werden als XMP-Metadaten direkt in die JPEG-Datei geschrieben.** In Lightroom Classic, digiKam, F-Stop oder Darktable öffnen — die Sterne sind schon da. Kein Re-Export, keine Sidecar-Dateien. **Du fotografierst RAW?** Kamera-RAWs einschalten und NEF, CR3 & Co. direkt im Grid bewerten — StarRate zeigt die von der Kamera eingebettete Vorschau und legt die Bewertungen in einem Lightroom-kompatiblen XMP-Sidecar ab, die RAW-Datei selbst bleibt unverändert. **Umstieg von Lightroom?** Bestehende XMP-Bewertungen mit einem `occ`-Befehl importieren — deine Jahre an Kuratierung wandern mit.
 
 **Ganze Ordnerbäume in einer Ansicht.** Die rekursive Ordneransicht flacht verschachtelte Verzeichnisse zu einem sortier- und filterbaren Grid ab — perfekt, um eine komplette Shoot-Woche oder ein Multi-Event-Archiv durchzuarbeiten, ohne in jeden Unterordner zu klicken.
 
@@ -57,6 +58,7 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
 - **Rekursive Ordneransicht** — kompletten Ordnerbaum als flachen Stream oder nach Ordnertiefe gruppiert durchblättern. Opt-in — einmal unter Persönlich → StarRate aktivieren. [So funktioniert's](https://github.com/merlin1de/starrate/blob/master/docs/recursive-folders.de.md)
 - **Diashow-Modus in der Loupe** — automatisches Durchlaufen mit einstellbarem Intervall, ideal für Kundenpräsentationen
 - XMP-Metadaten ins JPEG geschrieben — Lightroom / Bridge / digiKam kompatibel
+- **Kamera-RAW (Opt-in)** — NEF, CR2, CR3, ARW, DNG, ORF, RW2, RAF, PEF in Grid, Loupe und Gast-Galerien, mit der von der Kamera eingebetteten Vorschau (keine zusätzlichen Server-Pakete); Bewertungen landen in Lightroom-kompatiblen XMP-Sidecars, die der RAW beim Umbenennen, Verschieben und Löschen folgen
 - Konfigurierbare XMP-Label-Sprache: Lightroom (deutsche Lokalisierung) oder Bridge / digiKam / englische Tools
 - Selbstheilender XMP-Read beim Loupe-Open — extern bearbeitete Dateien (Lightroom, digiKam) synchronisieren ihre neuen Bewertungen beim nächsten Klick darauf, ohne manuellen `occ`-Lauf
 - Import bestehender XMP-Bewertungen aus Lightroom/digiKam via `occ starrate:import-xmp` (mit `--recursive` für ganze Ordnerbäume)
@@ -72,7 +74,7 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
 - Englisch und Deutsch
     ]]></description>
 
-    <version>1.3.13</version>
+    <version>1.4.0</version>
     <licence>agpl</licence>
 
     <author mail="starrate@merlin1.de" homepage="https://github.com/merlin1de/starrate">
