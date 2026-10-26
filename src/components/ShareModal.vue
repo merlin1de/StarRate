@@ -126,8 +126,12 @@
 
           <div class="sr-share-modal__field">
             <label class="sr-share-modal__checkbox-label" :class="{ 'sr-share-modal__checkbox-label--disabled': !commentsGloballyEnabled }">
-              <input type="checkbox" v-model="form.allowComment" class="sr-share-modal__checkbox"
-                     :disabled="!commentsGloballyEnabled" />
+              <input
+                type="checkbox"
+                v-model="form.allowComment"
+                class="sr-share-modal__checkbox"
+                :disabled="!commentsGloballyEnabled"
+              />
               {{ t('starrate', 'Kommentare erlauben') }}
             </label>
             <span v-if="!commentsGloballyEnabled" class="sr-share-modal__hint">
