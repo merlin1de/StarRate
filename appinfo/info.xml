@@ -100,11 +100,11 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
     <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-mobile-guest-loupe.jpg</screenshot>
 
     <dependencies>
-        <php min-version="8.1" max-version="8.5"/>
+        <php min-version="8.2" max-version="8.5"/>
         <database>sqlite</database>
         <database>mysql</database>
         <database>pgsql</database>
-        <nextcloud min-version="29" max-version="35"/>
+        <nextcloud min-version="33" max-version="35"/>
     </dependencies>
 
     <repair-steps>

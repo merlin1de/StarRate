@@ -5,8 +5,8 @@
 [![CI](https://github.com/merlin1de/starrate/actions/workflows/ci.yml/badge.svg)](https://github.com/merlin1de/starrate/actions/workflows/ci.yml)
 [![Nextcloud App Store](https://img.shields.io/badge/Nextcloud%20App%20Store-StarRate-blue?logo=nextcloud)](https://apps.nextcloud.com/apps/starrate)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-green.svg)](LICENSE)
-[![Nextcloud 29–35](https://img.shields.io/badge/Nextcloud-29–35-0082c9?logo=nextcloud)](https://apps.nextcloud.com/apps/starrate)
-[![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php)](https://php.net)
+[![Nextcloud 33–35](https://img.shields.io/badge/Nextcloud-33–35-0082c9?logo=nextcloud)](https://apps.nextcloud.com/apps/starrate)
+[![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net)
 
 > 🌳 **New in v1.3** — Recursive folder view: browse a whole folder tree as one stream, optionally grouped by folder depth. → [How it works](docs/recursive-folders.en.md)
 
@@ -93,8 +93,10 @@ Guests can rate images in their browser — **no Nextcloud account required**. T
 
 ## Requirements
 
-- Nextcloud 29–35
-- PHP 8.1–8.5
+- Nextcloud 33–35
+- PHP 8.2–8.5
+
+Still on Nextcloud 29–32? StarRate **1.3.13** stays available in the App Store for those versions — Nextcloud offers it automatically.
 - Node.js 18+ / npm 9+
 - Composer 2
 
@@ -157,7 +159,7 @@ npm run e2e:open   # Cypress GUI with browser selection
 make test-coverage # Reports written to tests/results/
 ```
 
-CI runs on every PR: Vitest (468 component tests) + PHPUnit (304 tests, PHP 8.1 + 8.4 + 8.5)
+CI runs on every PR: Vitest (470 component tests) + PHPUnit (371 tests, PHP 8.2 + 8.4 + 8.5)
 
 ---
 
