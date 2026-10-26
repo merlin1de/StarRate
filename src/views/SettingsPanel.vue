@@ -11,6 +11,15 @@
       </div>
       <div class="sr-settings__row">
         <label class="sr-settings__label sr-settings__label--check">
+          <input type="checkbox" v-model="form.show_raw" @change="autosave" />
+          {{ t('starrate', 'Kamera-RAWs anzeigen (NEF, CR2, CR3, ARW, DNG, …)') }}
+        </label>
+      </div>
+      <p v-if="form.show_raw" class="sr-settings__hint">
+        {{ t('starrate', 'Vorschau ist das JPEG, das die Kamera in die RAW-Datei einbettet. Liegen RAW und JPEG im selben Ordner, erscheint jedes Foto zweimal.') }}
+      </p>
+      <div class="sr-settings__row">
+        <label class="sr-settings__label sr-settings__label--check">
           <input type="checkbox" v-model="form.write_xmp" @change="autosave" />
           {{ t('starrate', 'XMP in JPEG schreiben') }}
         </label>
@@ -28,14 +37,14 @@
       <p v-if="form.write_xmp" class="sr-settings__hint">
         {{ t('starrate', 'Steuert nur den Label-Text (xmp:Label). Der Farbstreifen (photoshop:LabelColor) bleibt sprachneutral und funktioniert in beiden Modi.') }}
       </p>
-      <div v-if="form.write_xmp" class="sr-settings__row">
+      <div v-if="form.show_raw && form.write_xmp" class="sr-settings__row">
         <label class="sr-settings__label sr-settings__label--check">
           <input type="checkbox" v-model="form.write_raw_sidecar" @change="autosave" />
-          {{ t('starrate', 'Bei RAW-Dateien XMP-Sidecar schreiben') }}
+          {{ t('starrate', 'RAW-Bewertungen für Lightroom als XMP-Sidecar speichern') }}
         </label>
       </div>
-      <p v-if="form.write_xmp && form.write_raw_sidecar" class="sr-settings__hint">
-        {{ t('starrate', 'Die RAW-Datei bleibt unverändert. Bewertungen landen in DSC_0001.xmp neben DSC_0001.NEF; vorhandene Lightroom-Sidecars werden nur ergänzt.') }}
+      <p v-if="form.show_raw && form.write_xmp && form.write_raw_sidecar" class="sr-settings__hint">
+        {{ t('starrate', 'Die RAW-Datei bleibt unverändert. Bewertungen landen wie bei Lightroom in DSC_0001.xmp neben DSC_0001.NEF; vorhandene Sidecars werden nur ergänzt. Ausnahme DNG: Lightroom liest dort nur das eingebettete XMP.') }}
       </p>
       <div class="sr-settings__row">
         <label class="sr-settings__label sr-settings__label--check">
@@ -191,6 +200,7 @@ const DEFAULTS = {
   grid_columns:             'auto',
   enable_pick_ui:            false,
   write_xmp:                 true,
+  show_raw:                  false,
   write_raw_sidecar:         true,
   xmp_label_language:        'en',  // Server-seitig basierend auf User-Locale gesetzt
   comments_enabled:          false,

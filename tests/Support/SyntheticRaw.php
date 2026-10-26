@@ -99,6 +99,33 @@ final class SyntheticRaw
         );
     }
 
+    /**
+     * Canon CR3 (ISO-BMFF): moov mit Canon-uuid (CMT1-TIFF mit Orientierung + THMB)
+     * und erster Spur (stsz/co64 → volles JPEG in mdat), dazu der Preview-uuid mit PRVW.
+     */
+    public static function cr3(string $thumb, string $preview, string $full, int $orientation = 1): string
+    {
+        $box  = static fn(string $type, string $payload): string => pack('N', 8 + strlen($payload)) . $type . $payload;
+        $cmt1 = 'II' . pack('v', 42) . pack('V', 8) . pack('v', 1) . pack('vvVV', 0x0112, 3, 1, $orientation) . pack('V', 0);
+        $thmb = pack('N', 0) . pack('nn', 160, 120) . pack('N', strlen($thumb)) . pack('N', 0x00010000) . $thumb;
+        $canonUuid   = "\x85\xc0\xb6\x87\x82\x0f\x11\xe0\x81\x11\xf4\xce\x46\x2b\x6a\x48";
+        $previewUuid = "\xea\xf4\x2b\x5e\x1c\x98\x4b\x88\xb9\xfb\xb7\xdc\x40\x6e\x4d\x16";
+
+        $ftyp = $box('ftyp', 'crx ' . pack('N', 1) . 'crx isom');
+        $prvw = $box('uuid', $previewUuid . pack('NN', 0, 1)
+            . $box('PRVW', pack('N', 0) . pack('nnnn', 1, 1620, 1080, 1) . pack('N', strlen($preview)) . $preview));
+
+        // moov-Länge hängt nicht vom mdat-Offset ab (co64 hat feste Größe) → zweimal bauen
+        $moov = static function (int $fullOffset) use ($box, $canonUuid, $cmt1, $thmb, $full): string {
+            $stbl = $box('stsz', pack('NNN', 0, 0, 1) . pack('N', strlen($full)))
+                . $box('co64', pack('NN', 0, 1) . pack('J', $fullOffset));
+            $trak = $box('trak', $box('mdia', $box('minf', $box('stbl', $stbl))));
+            return $box('moov', $box('uuid', $canonUuid . $box('CMT1', $cmt1) . $box('THMB', $thmb)) . $trak);
+        };
+        $head = $ftyp . $moov(0) . $prvw;
+        return $ftyp . $moov(strlen($head) + 8) . $prvw . $box('mdat', $full);
+    }
+
     /** Fuji RAF: fester Header mit JPEG-Zeiger bei Byte 84. */
     public static function raf(string $jpeg): string
     {

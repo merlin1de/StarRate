@@ -7,6 +7,7 @@ namespace OCA\StarRate\Controller;
 use OCA\StarRate\Service\RawPreviewExtractor;
 use OCA\StarRate\Service\ShareService;
 use OCA\StarRate\Service\TagService;
+use OCA\StarRate\Settings\UserSettings;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -67,6 +68,7 @@ class GalleryController extends Controller
         private readonly LoggerInterface $logger,
         private readonly ICacheFactory   $cacheFactory,
         private readonly IDBConnection   $db,
+        private readonly UserSettings    $userSettings,
     ) {
         parent::__construct($appName, $request);
     }
@@ -144,6 +146,14 @@ class GalleryController extends Controller
             // Metadaten werden bewusst NICHT mit gecached: sie ändern sich
             // häufig (jede Bewertung), die Liste hingegen nur bei add/remove.
             $allImages = $this->listImagesCached($folder, $userFolder, $sort, $order, $recursive, $depth);
+            // RAWs sind opt-in. Gefiltert wird nach dem Cache, damit der Schalter
+            // ohne Cache-Invalidierung sofort wirkt.
+            if (empty($this->userSettings->getSettings($userId)['show_raw'])) {
+                $allImages = array_values(array_filter(
+                    $allImages,
+                    static fn(array $img): bool => $img['mimetype'] !== RawPreviewExtractor::MIME,
+                ));
+            }
             $total     = count($allImages);
 
             // Pagination-Slicing

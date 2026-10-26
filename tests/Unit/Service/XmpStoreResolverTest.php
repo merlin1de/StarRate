@@ -16,7 +16,7 @@ class XmpStoreResolverTest extends TestCase
     private SidecarService $sidecar;
     private XmpStoreResolver $resolver;
 
-    private const ON = ['write_xmp' => true, 'write_raw_sidecar' => true];
+    private const ON = ['show_raw' => true, 'write_xmp' => true, 'write_raw_sidecar' => true];
 
     protected function setUp(): void
     {
@@ -50,7 +50,7 @@ class XmpStoreResolverTest extends TestCase
         $this->assertNull($this->resolver->forFile($this->file('a.jpg', 'image/jpeg'), ['write_xmp' => false]));
         $this->assertNull($this->resolver->forFile(
             $this->file('a.NEF', 'image/x-dcraw'),
-            ['write_xmp' => true, 'write_raw_sidecar' => false],
+            ['show_raw' => true, 'write_xmp' => true, 'write_raw_sidecar' => false],
         ));
     }
 }

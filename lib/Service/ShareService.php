@@ -291,6 +291,7 @@ class ShareService
         $settings = $this->userSettings->getSettings($ownerId);
         $sort     = $settings['default_sort']       ?? 'name';
         $order    = $settings['default_sort_order'] ?? 'asc';
+        $showRaw  = !empty($settings['show_raw']);
 
         $userFolder = $this->rootFolder->getUserFolder($ownerId);
 
@@ -307,7 +308,7 @@ class ShareService
                 throw new \RuntimeException("Pfad ist kein Ordner: {$ncPath}");
             }
 
-            $images = $this->listImagesRecursiveForShare($folder, $depth);
+            $images = $this->listImagesRecursiveForShare($folder, $depth, $showRaw);
             // Bei recursive: kein Folder-Listing, der Gast hat keine Navigation
             $folders = [];
         } else {
@@ -339,7 +340,7 @@ class ShareService
                     continue;
                 }
                 if (!in_array($node->getMimeType(), self::GUEST_MIME, true)
-                    || !RawPreviewExtractor::isListable($node->getMimeType(), $node->getName())
+                    || !RawPreviewExtractor::isListable($node->getMimeType(), $node->getName(), $showRaw)
                 ) {
                     continue;
                 }
@@ -1095,7 +1096,7 @@ class ShareService
      * Limit für Guest 25k wie beim Owner — verhindert Memory-Explosion bei
      * recursive=true auf großen Trees.
      */
-    private function listImagesRecursiveForShare(Folder $folder, int $depth): array
+    private function listImagesRecursiveForShare(Folder $folder, int $depth, bool $showRaw): array
     {
         $RECURSIVE_HARD_LIMIT = 25000;
 
@@ -1122,7 +1123,7 @@ class ShareService
 
         $images = [];
         foreach ($rows as $row) {
-            if (!RawPreviewExtractor::isListable($row['mimetype'], $row['name'])) {
+            if (!RawPreviewExtractor::isListable($row['mimetype'], $row['name'], $showRaw)) {
                 continue;
             }
             $internalRelative = ltrim(substr($row['path'], strlen($rootInternalPrefix)), '/');

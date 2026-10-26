@@ -69,6 +69,7 @@ class RatingControllerTest extends TestCase
         // Default: write_xmp aktiv, comments_enabled aktiv
         $this->userSettings->method('getSettings')->willReturn([
             'write_xmp'          => true,
+            'show_raw'           => true,
             'write_raw_sidecar'  => true,
             'xmp_label_language' => 'en',
             'comments_enabled' => true,
@@ -713,7 +714,7 @@ class RatingControllerTest extends TestCase
     {
         $this->userSettings = $this->createMock(UserSettings::class);
         $this->userSettings->method('getSettings')->willReturn([
-            'write_xmp' => true, 'write_raw_sidecar' => false, 'xmp_label_language' => 'en', 'comments_enabled' => true,
+            'write_xmp' => true, 'show_raw' => true, 'write_raw_sidecar' => false, 'xmp_label_language' => 'en', 'comments_enabled' => true,
         ]);
         $controller = new RatingController(
             'starrate', $this->request, $this->rootFolder,

@@ -501,6 +501,7 @@ class ShareServiceTest extends TestCase
         $us = $this->createMock(UserSettings::class);
         $us->method('getSettings')->willReturn([
             'write_xmp'          => $writeXmp,
+            'show_raw'           => true,
             'write_raw_sidecar'  => true,
             'xmp_label_language' => $lang,
         ]);
@@ -867,6 +868,21 @@ class ShareServiceTest extends TestCase
         $this->assertSame(['a.jpg', 'b.jpg'], array_column($result['images'], 'name'));
     }
 
+    public function testGetImagesForShareShowsRawsOnlyWhenOwnerEnabledThem(): void
+    {
+        $files = ['a.jpg' => [10, 100], 'a.NEF' => [10, 900], 'b.MRW' => [10, 900]];
+        $share = ['owner_id' => self::OWNER_ID, 'nc_path' => '/Fotos', 'min_rating' => 0];
+
+        $off = $this->makeServiceForImages($this->folderWithImages($files), $this->sortSettings('name', 'asc'));
+        $this->assertSame(['a.jpg'], array_column($off->getImagesForShare($share, '')['images'], 'name'));
+
+        $us = $this->createMock(UserSettings::class);
+        $us->method('getSettings')->willReturn(['default_sort' => 'name', 'default_sort_order' => 'asc', 'show_raw' => true]);
+        $on = $this->makeServiceForImages($this->folderWithImages($files), $us);
+        // MRW: keine Vorschau auffindbar → nie gelistet
+        $this->assertSame(['a.jpg', 'a.NEF'], array_column($on->getImagesForShare($share, '')['images'], 'name'));
+    }
+
     /**
      * Baut eine IRootFolder, deren User-Folder->get() einen Ordner mit den
      * gegebenen Bildern (name => [mtime, size]) in genau dieser Reihenfolge liefert.
@@ -883,7 +899,9 @@ class ShareServiceTest extends TestCase
             $file->method('getName')->willReturn($name);
             $file->method('getMtime')->willReturn($mtime);
             $file->method('getSize')->willReturn($size);
-            $file->method('getMimeType')->willReturn('image/jpeg');
+            $file->method('getMimeType')->willReturn(
+                str_ends_with(strtolower($name), '.jpg') ? 'image/jpeg' : 'image/x-dcraw'
+            );
             $nodes[] = $file;
         }
         $folder = $this->createMock(Folder::class);

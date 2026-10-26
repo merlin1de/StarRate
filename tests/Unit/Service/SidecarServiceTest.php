@@ -140,12 +140,13 @@ XMP;
         $files = [];
         $raw   = $this->rawInFolder('DSC_0001.NEF', $files);
         $jpeg  = $this->rawInFolder('DSC_0001.JPG', $files, 'image/jpeg');
-        $on    = ['write_xmp' => true, 'write_raw_sidecar' => true];
+        $on    = ['show_raw' => true, 'write_xmp' => true, 'write_raw_sidecar' => true];
 
         $this->assertTrue(SidecarService::appliesTo($raw, $on));
         $this->assertFalse(SidecarService::appliesTo($jpeg, $on));
-        $this->assertFalse(SidecarService::appliesTo($raw, ['write_xmp' => false, 'write_raw_sidecar' => true]));
-        $this->assertFalse(SidecarService::appliesTo($raw, ['write_xmp' => true, 'write_raw_sidecar' => false]));
+        $this->assertFalse(SidecarService::appliesTo($raw, ['show_raw' => true, 'write_xmp' => false, 'write_raw_sidecar' => true]));
+        $this->assertFalse(SidecarService::appliesTo($raw, ['show_raw' => true, 'write_xmp' => true, 'write_raw_sidecar' => false]));
+        $this->assertFalse(SidecarService::appliesTo($raw, ['show_raw' => false, 'write_xmp' => true, 'write_raw_sidecar' => true]));
     }
 
     public function testDngGetsNoSidecar(): void
@@ -154,7 +155,7 @@ XMP;
         $files = [];
         $dng   = $this->rawInFolder('IMG_0001.DNG', $files);
         $this->assertFalse(SidecarService::hasSidecar($dng));
-        $this->assertFalse(SidecarService::appliesTo($dng, ['write_xmp' => true, 'write_raw_sidecar' => true]));
+        $this->assertFalse(SidecarService::appliesTo($dng, ['show_raw' => true, 'write_xmp' => true, 'write_raw_sidecar' => true]));
     }
 
     public function testCreatesLightroomStyleSidecarWhenMissing(): void

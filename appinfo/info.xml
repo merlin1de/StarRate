@@ -106,8 +106,12 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
     </dependencies>
 
     <repair-steps>
+        <install>
+            <step>OCA\StarRate\Migration\RegisterRawMimeTypes</step>
+        </install>
         <post-migration>
             <step>OCA\StarRate\Migration\GuestXmpDriftWarning</step>
+            <step>OCA\StarRate\Migration\RegisterRawMimeTypes</step>
         </post-migration>
     </repair-steps>
 

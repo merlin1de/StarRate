@@ -10,7 +10,8 @@ use Psr\Log\LoggerInterface;
 /**
  * Holt die von der Kamera eingebettete JPEG-Vorschau aus einer RAW-Datei
  * (Nikon NEF und andere TIFF-basierte RAWs wie CR2, ARW, DNG, PEF, dazu Panasonic
- * RW2 (JpgFromRaw-Tag), Olympus ORF (MakerNote) und Fuji RAF).
+ * RW2 (JpgFromRaw-Tag), Olympus ORF (MakerNote), Fuji RAF und Canon CR3
+ * (ISO-BMFF-Container wie MP4).
  *
  * Es wird nichts entwickelt/demosaiced: Kameras betten ein oder mehrere JPEGs
  * ein (Thumbnail, mittlere Vorschau, meist ein volles "JpgFromRaw"). Wir laufen
@@ -30,7 +31,10 @@ class RawPreviewExtractor
     // Endungen, deren Vorschau wir finden (geprüft mit Beispieldateien von
     // raw.pixls.us). Andere image/x-dcraw-Formate (MRW, X3F, IIQ, …) werden gar
     // nicht erst gelistet — sonst stünden leere Kacheln im Grid.
-    public const EXTENSIONS = ['nef', 'cr2', 'arw', 'dng', 'pef', 'orf', 'rw2', 'raf'];
+    public const EXTENSIONS = ['nef', 'cr2', 'cr3', 'arw', 'dng', 'pef', 'orf', 'rw2', 'raf'];
+
+    // Endungen, die Nextcloud selbst nicht auf MIME abbildet (siehe Application)
+    public const EXTRA_MAPPINGS = ['cr3' => [self::MIME]];
 
     // TIFF-Tags
     private const TAG_COMPRESSION   = 0x0103;
@@ -55,9 +59,14 @@ class RawPreviewExtractor
     private const OLY_PREVIEW_START   = 0x0101;
     private const OLY_PREVIEW_LENGTH  = 0x0102;
 
+    // Canon CR3: uuid-Box in moov (THMB + CMT1-EXIF) bzw. auf Top-Level (PRVW)
+    private const CR3_CANON_UUID   = "\x85\xc0\xb6\x87\x82\x0f\x11\xe0\x81\x11\xf4\xce\x46\x2b\x6a\x48";
+    private const CR3_PREVIEW_UUID = "\xea\xf4\x2b\x5e\x1c\x98\x4b\x88\xb9\xfb\xb7\xdc\x40\x6e\x4d\x16";
+
     // Schutzgrenzen gegen kaputte/bösartige Dateien
     private const MAX_IFDS        = 32;
     private const MAX_IFD_ENTRIES = 1024;
+    private const MAX_BMFF_BOXES  = 512;
     private const JPEG_HEAD_BYTES = 262_144;
     private const MAX_JPEG_BYTES  = 80 * 1024 * 1024;
     private const MIN_JPEG_BYTES  = 128;
@@ -79,11 +88,11 @@ class RawPreviewExtractor
 
     /**
      * Listen-Filter für Grid und Gast-Galerien: Nicht-RAWs immer, RAWs nur in
-     * unterstützten Formaten.
+     * unterstützten Formaten und nur, wenn der User sie sehen will (show_raw).
      */
-    public static function isListable(string $mime, string $filename): bool
+    public static function isListable(string $mime, string $filename, bool $showRaw = true): bool
     {
-        return $mime !== self::MIME || self::supports($filename);
+        return $mime !== self::MIME || ($showRaw && self::supports($filename));
     }
 
     /**
@@ -151,6 +160,11 @@ class RawPreviewExtractor
                 ]);
             }
             return $result;
+        }
+
+        // Canon CR3: ISO-BMFF statt TIFF
+        if (substr($header, 4, 8) === 'ftypcrx ') {
+            return $this->inspectCr3($stream);
         }
 
         $order = substr($header, 0, 2);
@@ -436,6 +450,151 @@ class RawPreviewExtractor
             }
         }
         return $ranges;
+    }
+
+    // ─── CR3 (ISO-BMFF) ───────────────────────────────────────────────────────
+
+    /**
+     * Canon CR3: Thumbnail (THMB im Canon-uuid von moov, 160×120), Vorschau (PRVW
+     * im Preview-uuid, ~1620×1080) und volles JPEG (erste Spur, Sample in mdat).
+     * Orientierung aus dem EXIF-TIFF in CMT1.
+     *
+     * @param  resource $stream
+     * @return array{orientation: int, candidates: list<array{offset: int, length: int, width: int, height: int}>}
+     */
+    private function inspectCr3($stream): array
+    {
+        $orientation = 0;
+        $ranges      = [];
+        $fileSize    = (int) (fstat($stream)['size'] ?? 0);
+
+        foreach ($this->bmffBoxes($stream, 0, $fileSize > 0 ? $fileSize : PHP_INT_MAX) as [$type, $start, $end]) {
+            if ($type === 'moov') {
+                $firstTrak = true;
+                foreach ($this->bmffBoxes($stream, $start, $end) as [$t, $s, $e]) {
+                    if ($t === 'uuid' && $this->readRange($stream, $s, 16) === self::CR3_CANON_UUID) {
+                        foreach ($this->bmffBoxes($stream, $s + 16, $e) as [$tt, $ss]) {
+                            if ($tt === 'CMT1') {
+                                $orientation = $this->tiffOrientation($stream, $ss);
+                            } elseif ($tt === 'THMB') {
+                                // Version/Flags, Breite, Höhe, JPEG-Länge, 4 Bytes ?, JPEG
+                                $ranges[] = $this->sizedBlob($stream, $ss + 8, $ss + 16);
+                            }
+                        }
+                    } elseif ($t === 'trak' && $firstTrak) {
+                        $firstTrak = false;
+                        $full      = $this->cr3TrackJpeg($stream, $s, $e);
+                        if ($full !== null) {
+                            $ranges[] = $full;
+                        }
+                    }
+                }
+            } elseif ($type === 'uuid' && $this->readRange($stream, $start, 16) === self::CR3_PREVIEW_UUID) {
+                // Nach der UUID 8 Bytes Kopf, dann die PRVW-Box:
+                // 4 Bytes ?, 2 Bytes ?, Breite, Höhe, 2 Bytes ?, JPEG-Länge, JPEG
+                foreach ($this->bmffBoxes($stream, $start + 24, $end) as [$t, $s]) {
+                    if ($t === 'PRVW') {
+                        $ranges[] = $this->sizedBlob($stream, $s + 12, $s + 16);
+                    }
+                }
+            }
+        }
+
+        return ['orientation' => $orientation, 'candidates' => $this->validateCandidates($stream, $ranges)];
+    }
+
+    /**
+     * Volles JPEG der ersten CR3-Spur: Länge aus stsz, Position aus co64/stco.
+     *
+     * @param  resource $stream
+     * @return array{0: int, 1: int}|null
+     */
+    private function cr3TrackJpeg($stream, int $start, int $end): ?array
+    {
+        foreach (['mdia', 'minf', 'stbl'] as $name) {
+            $box = null;
+            foreach ($this->bmffBoxes($stream, $start, $end) as [$t, $s, $e]) {
+                if ($t === $name) {
+                    $box = [$s, $e];
+                    break;
+                }
+            }
+            if ($box === null) {
+                return null;
+            }
+            [$start, $end] = $box;
+        }
+
+        $offset = 0;
+        $length = 0;
+        foreach ($this->bmffBoxes($stream, $start, $end) as [$t, $s]) {
+            $d = $this->readRange($stream, $s, 16);
+            if ($d === null || strlen($d) < 12) {
+                continue;
+            }
+            if ($t === 'stsz') {
+                // Version/Flags, Sample-Größe (0 = Tabelle folgt), Anzahl, [Größe …]
+                $length = $this->u32(substr($d, 4, 4), false)
+                    ?: (strlen($d) >= 16 ? $this->u32(substr($d, 12, 4), false) : 0);
+            } elseif ($t === 'co64' && strlen($d) >= 16) {
+                $offset = unpack('J', substr($d, 8, 8))[1];
+            } elseif ($t === 'stco') {
+                $offset = $this->u32(substr($d, 8, 4), false);
+            }
+        }
+        return $offset > 0 && $length > 0 ? [$offset, $length] : null;
+    }
+
+    /**
+     * ISO-BMFF-Boxen zwischen $start und $end als [Typ, Payload-Start, Ende].
+     *
+     * @param  resource $stream
+     * @return \Generator<int, array{0: string, 1: int, 2: int}>
+     */
+    private function bmffBoxes($stream, int $start, int $end): \Generator
+    {
+        $pos = $start;
+        for ($n = 0; $n < self::MAX_BMFF_BOXES && $pos + 8 <= $end; $n++) {
+            $h = $this->readRange($stream, $pos, 16);
+            if ($h === null || strlen($h) < 8) {
+                return;
+            }
+            $size = $this->u32(substr($h, 0, 4), false);
+            $head = 8;
+            if ($size === 1) {
+                if (strlen($h) < 16) {
+                    return;
+                }
+                $size = unpack('J', substr($h, 8, 8))[1];
+                $head = 16;
+            } elseif ($size === 0) {
+                $size = $end - $pos;   // bis zum Ende des Containers
+            }
+            if ($size < $head || $size > $end - $pos) {
+                return;
+            }
+            yield [substr($h, 4, 4), $pos + $head, $pos + $size];
+            $pos += $size;
+        }
+    }
+
+    /** [Offset, Länge] eines JPEGs, dessen Länge als Big-Endian-u32 bei $lengthAt steht. */
+    private function sizedBlob($stream, int $lengthAt, int $dataAt): array
+    {
+        $len = $this->readRange($stream, $lengthAt, 4);
+        return [$dataAt, $len !== null && strlen($len) === 4 ? $this->u32($len, false) : 0];
+    }
+
+    /** Orientierung aus IFD0 eines eingebetteten TIFF-Blocks (Offsets relativ zu $tiffStart). */
+    private function tiffOrientation($stream, int $tiffStart): int
+    {
+        $h = $this->readRange($stream, $tiffStart, 8);
+        if ($h === null || strlen($h) < 8 || !in_array(substr($h, 0, 2), ['II', 'MM'], true)) {
+            return 0;
+        }
+        $le  = substr($h, 0, 2) === 'II';
+        $ifd = $this->readIfd($stream, $tiffStart + $this->u32(substr($h, 4, 4), $le), $le, [self::TAG_ORIENTATION], $tiffStart);
+        return $this->validOrientation($ifd['tags'][self::TAG_ORIENTATION][0] ?? 0);
     }
 
     /**

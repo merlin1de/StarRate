@@ -18,7 +18,7 @@ class RawSidecarListenerTest extends TestCase
 {
     /** @var SidecarService&MockObject */
     private SidecarService $sidecars;
-    private array $settings = ['write_xmp' => true, 'write_raw_sidecar' => true];
+    private array $settings = ['show_raw' => true, 'write_xmp' => true, 'write_raw_sidecar' => true];
 
     private function listener(): RawSidecarListener
     {
@@ -60,6 +60,10 @@ class RawSidecarListenerTest extends TestCase
         $listener->handle(new NodeDeletedEvent($this->file('/anna/files_trashbin/files/DSC_0001.NEF.d1700000000')));
 
         $this->settings['write_raw_sidecar'] = false;
+        $listener->handle(new NodeDeletedEvent($this->file('/anna/files/Shoot/DSC_0001.NEF')));
+
+        // RAWs nicht eingeschaltet → StarRate fasst fremde Sidecars nie an
+        $this->settings = ['show_raw' => false, 'write_xmp' => true, 'write_raw_sidecar' => true];
         $listener->handle(new NodeDeletedEvent($this->file('/anna/files/Shoot/DSC_0001.NEF')));
     }
 

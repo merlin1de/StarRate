@@ -223,9 +223,38 @@ class RawPreviewExtractorTest extends TestCase
         $this->assertSame([300, 400], $this->dims($out));
     }
 
+    public function testCr3FindsThumbPreviewAndFullJpeg(): void
+    {
+        $cr3  = SyntheticRaw::cr3(SyntheticRaw::jpeg(160, 120), SyntheticRaw::jpeg(810, 540), SyntheticRaw::jpeg(1600, 1066), 8);
+        $info = $this->extractor->inspectStream($this->stream($cr3));
+
+        $this->assertSame(8, $info['orientation']);
+        $sizes = array_map(fn($c) => $c['width'] . 'x' . $c['height'], $info['candidates']);
+        sort($sizes);
+        $this->assertSame(['1600x1066', '160x120', '810x540'], $sizes);
+
+        // Grid-Größe: mittlere Vorschau, um 90° gedreht (Orientierung 8)
+        $out = $this->extractor->extractPreviewFromStream($this->stream($cr3), 512, 512);
+        $this->assertSame([341, 512], $this->dims($out));
+    }
+
+    public function testCr3SurvivesTruncatedAndGarbageBoxes(): void
+    {
+        $cr3 = SyntheticRaw::cr3(SyntheticRaw::jpeg(160, 120), SyntheticRaw::jpeg(810, 540), SyntheticRaw::jpeg(1600, 1066));
+        foreach ([substr($cr3, 0, 200), substr($cr3, 0, 24) . "\xff\xff\xff\xffmoov", "\x00\x00\x00\x00ftypcrx \x00\x00"] as $broken) {
+            $this->assertNull($this->extractor->extractPreviewFromStream($this->stream($broken), 512, 512));
+        }
+    }
+
+    public function testRawsAreOptIn(): void
+    {
+        $this->assertFalse(RawPreviewExtractor::isListable('image/x-dcraw', 'a.NEF', false));
+        $this->assertTrue(RawPreviewExtractor::isListable('image/jpeg', 'a.jpg', false));
+    }
+
     public function testSupportsOnlyFormatsWithKnownPreviewLocation(): void
     {
-        foreach (['DSC_0001.NEF', 'a.cr2', 'a.ARW', 'a.dng', 'a.pef', 'a.orf', 'a.RW2', 'a.raf'] as $name) {
+        foreach (['DSC_0001.NEF', 'a.cr2', 'a.ARW', 'a.dng', 'a.pef', 'a.orf', 'a.RW2', 'a.raf', 'IMG_0001.CR3'] as $name) {
             $this->assertTrue(RawPreviewExtractor::supports($name), $name);
         }
         foreach (['a.mrw', 'a.x3f', 'a.iiq', 'a.jpg', 'noext'] as $name) {

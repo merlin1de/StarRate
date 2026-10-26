@@ -52,6 +52,9 @@ class UserSettingsTest extends TestCase
         $this->assertTrue($result['show_color_overlay']);
         $this->assertSame('auto', $result['grid_columns']);
         $this->assertFalse($result['enable_pick_ui']);
+        // RAWs sind opt-in (RAW+JPEG-Ordner zeigten sonst jedes Bild doppelt)
+        $this->assertFalse($result['show_raw']);
+        $this->assertTrue($result['write_raw_sidecar']);
     }
 
     public function testGetSettingsReturnsStoredValues(): void

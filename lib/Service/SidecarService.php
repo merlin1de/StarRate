@@ -44,11 +44,14 @@ class SidecarService implements XmpStore
     ) {}
 
     /**
-     * Sidecar nur für RAWs, und nur wenn der User XMP-Schreiben + RAW-Sidecars aktiviert hat.
+     * Sidecar nur für RAWs, und nur wenn der User RAWs anzeigt und XMP-Schreiben +
+     * RAW-Sidecars aktiviert hat. Wer RAWs nicht eingeschaltet hat, dessen
+     * Sidecars fasst StarRate nie an (auch nicht beim Löschen/Umbenennen).
      */
     public static function appliesTo(File $file, array $settings): bool
     {
         return self::hasSidecar($file)
+            && !empty($settings['show_raw'])
             && !empty($settings['write_xmp'])
             && !empty($settings['write_raw_sidecar']);
     }
