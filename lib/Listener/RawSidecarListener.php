@@ -41,9 +41,11 @@ class RawSidecarListener implements IEventListener
                     $this->sidecarService->deleteSidecarOf($raw);
                 }
             } elseif ($event instanceof NodeRenamedEvent) {
+                // Die Quelle existiert nach dem Rename nicht mehr: ohne Filecache-Eintrag
+                // wirft getMimeType() — nur Name/Pfad der Quelle sind verlässlich.
                 $source = $event->getSource();
                 $target = $event->getTarget();
-                if ($this->manages($source) && $target instanceof File && SidecarService::hasSidecar($target)) {
+                if ($source instanceof File && $this->manages($target)) {
                     $this->sidecarService->moveSidecarWith($source, $target);
                 }
             }

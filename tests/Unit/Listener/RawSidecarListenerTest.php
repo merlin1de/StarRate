@@ -76,6 +76,19 @@ class RawSidecarListenerTest extends TestCase
         $this->listener()->handle(new NodeRenamedEvent($source, $target));
     }
 
+    public function testRenameWorksAlthoughSourceNoLongerExists(): void
+    {
+        // Echte NC-Quelle ist ein NonExistingFile: getMimeType() wirft (auf NC33 gesehen)
+        $source = $this->createMock(File::class);
+        $source->method('getPath')->willReturn('/anna/files/Shoot/DSC_0001.NEF');
+        $source->method('getName')->willReturn('DSC_0001.NEF');
+        $source->method('getMimeType')->willThrowException(new \OCP\Files\NotFoundException());
+        $target = $this->file('/anna/files/Shoot/Paris_001.NEF');
+        $this->sidecars->expects($this->once())->method('moveSidecarWith')->with($source, $target);
+
+        $this->listener()->handle(new NodeRenamedEvent($source, $target));
+    }
+
     public function testRenamingRawToNonRawLeavesSidecar(): void
     {
         $this->sidecars->expects($this->never())->method('moveSidecarWith');
