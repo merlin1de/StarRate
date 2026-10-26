@@ -200,6 +200,42 @@ class RawPreviewExtractorTest extends TestCase
         $this->assertSame($jpeg, $out);
     }
 
+    public function testRw2UsesJpgFromRawTag(): void
+    {
+        $jpeg = SyntheticRaw::jpeg(320, 240);
+        $info = $this->extractor->inspectStream($this->stream(SyntheticRaw::rw2($jpeg)));
+        $this->assertSame([[320, 240]], array_map(fn($c) => [$c['width'], $c['height']], $info['candidates']));
+
+        $out = $this->extractor->extractPreviewFromStream($this->stream(SyntheticRaw::rw2($jpeg)), 1024, 1024);
+        $this->assertSame($jpeg, $out);
+    }
+
+    public function testOrfUsesOlympusMakerNotePreview(): void
+    {
+        $jpeg = SyntheticRaw::jpeg(400, 300);
+        $out  = $this->extractor->extractPreviewFromStream($this->stream(SyntheticRaw::orf($jpeg)), 1024, 1024);
+        $this->assertSame($jpeg, $out);
+    }
+
+    public function testOrfAppliesOrientationFromIfd0(): void
+    {
+        $out = $this->extractor->extractPreviewFromStream($this->stream(SyntheticRaw::orf(SyntheticRaw::jpeg(400, 300), 6)), 1024, 1024);
+        $this->assertSame([300, 400], $this->dims($out));
+    }
+
+    public function testSupportsOnlyFormatsWithKnownPreviewLocation(): void
+    {
+        foreach (['DSC_0001.NEF', 'a.cr2', 'a.ARW', 'a.dng', 'a.pef', 'a.orf', 'a.RW2', 'a.raf'] as $name) {
+            $this->assertTrue(RawPreviewExtractor::supports($name), $name);
+        }
+        foreach (['a.mrw', 'a.x3f', 'a.iiq', 'a.jpg', 'noext'] as $name) {
+            $this->assertFalse(RawPreviewExtractor::supports($name), $name);
+        }
+        $this->assertTrue(RawPreviewExtractor::isListable('image/jpeg', 'a.jpg'));
+        $this->assertTrue(RawPreviewExtractor::isListable('image/x-dcraw', 'a.NEF'));
+        $this->assertFalse(RawPreviewExtractor::isListable('image/x-dcraw', 'a.MRW'));
+    }
+
     public function testNoCandidatesReturnsNull(): void
     {
         $nef = SyntheticRaw::nef(1, null, [], true, true);

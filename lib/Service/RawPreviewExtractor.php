@@ -9,8 +9,8 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Holt die von der Kamera eingebettete JPEG-Vorschau aus einer RAW-Datei
- * (Nikon NEF und andere TIFF-basierte RAWs wie CR2, ARW, DNG, PEF, ORF, RW2,
- * dazu Fuji RAF).
+ * (Nikon NEF und andere TIFF-basierte RAWs wie CR2, ARW, DNG, PEF, dazu Panasonic
+ * RW2 (JpgFromRaw-Tag), Olympus ORF (MakerNote) und Fuji RAF).
  *
  * Es wird nichts entwickelt/demosaiced: Kameras betten ein oder mehrere JPEGs
  * ein (Thumbnail, mittlere Vorschau, meist ein volles "JpgFromRaw"). Wir laufen
@@ -27,6 +27,11 @@ class RawPreviewExtractor
     // Nextcloud mappt nef, cr2, arw, dng, raf, orf, pef, rw2 … auf diesen Typ.
     public const MIME = 'image/x-dcraw';
 
+    // Endungen, deren Vorschau wir finden (geprüft mit Beispieldateien von
+    // raw.pixls.us). Andere image/x-dcraw-Formate (MRW, X3F, IIQ, …) werden gar
+    // nicht erst gelistet — sonst stünden leere Kacheln im Grid.
+    public const EXTENSIONS = ['nef', 'cr2', 'arw', 'dng', 'pef', 'orf', 'rw2', 'raf'];
+
     // TIFF-Tags
     private const TAG_COMPRESSION   = 0x0103;
     private const TAG_STRIP_OFFSETS = 0x0111;
@@ -35,10 +40,20 @@ class RawPreviewExtractor
     private const TAG_SUB_IFDS      = 0x014A;
     private const TAG_JPEG_OFFSET   = 0x0201;
     private const TAG_JPEG_LENGTH   = 0x0202;
+    private const TAG_RW2_JPEG      = 0x002E;   // Panasonic JpgFromRaw (UNDEFINED-Blob in IFD0)
+    private const TAG_EXIF_IFD      = 0x8769;
+    private const TAG_MAKERNOTE     = 0x927C;
     private const WANTED_TAGS = [
         self::TAG_COMPRESSION, self::TAG_STRIP_OFFSETS, self::TAG_ORIENTATION,
         self::TAG_STRIP_COUNTS, self::TAG_SUB_IFDS, self::TAG_JPEG_OFFSET, self::TAG_JPEG_LENGTH,
+        self::TAG_RW2_JPEG, self::TAG_EXIF_IFD, self::TAG_MAKERNOTE,
     ];
+
+    // Olympus-MakerNote: Thumbnail im Haupt-IFD, Vorschau im CameraSettings-Sub-IFD
+    private const OLY_THUMBNAIL       = 0x0100;
+    private const OLY_CAMERA_SETTINGS = 0x2020;
+    private const OLY_PREVIEW_START   = 0x0101;
+    private const OLY_PREVIEW_LENGTH  = 0x0102;
 
     // Schutzgrenzen gegen kaputte/bösartige Dateien
     private const MAX_IFDS        = 32;
@@ -53,6 +68,23 @@ class RawPreviewExtractor
     ) {}
 
     // ─── Öffentliche API ──────────────────────────────────────────────────────
+
+    /**
+     * Ob wir für diese Datei (nach Endung) eine Vorschau liefern können.
+     */
+    public static function supports(string $filename): bool
+    {
+        return in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), self::EXTENSIONS, true);
+    }
+
+    /**
+     * Listen-Filter für Grid und Gast-Galerien: Nicht-RAWs immer, RAWs nur in
+     * unterstützten Formaten.
+     */
+    public static function isListable(string $mime, string $filename): bool
+    {
+        return $mime !== self::MIME || self::supports($filename);
+    }
 
     /**
      * Liefert ein JPEG (Bytes) von höchstens $maxX × $maxY, korrekt orientiert,
@@ -154,6 +186,17 @@ class RawPreviewExtractor
             }
             if (isset($tags[self::TAG_JPEG_OFFSET], $tags[self::TAG_JPEG_LENGTH])) {
                 $ranges[] = [$tags[self::TAG_JPEG_OFFSET][0], $tags[self::TAG_JPEG_LENGTH][0]];
+            }
+            // Panasonic RW2: volles JPEG als UNDEFINED-Blob direkt in IFD0
+            if (isset($tags[self::TAG_RW2_JPEG])) {
+                $ranges[] = $tags[self::TAG_RW2_JPEG];
+            }
+            // Olympus ORF: Vorschau steckt in der MakerNote des EXIF-IFDs
+            if (isset($tags[self::TAG_EXIF_IFD])) {
+                $queue[] = $tags[self::TAG_EXIF_IFD][0];
+            }
+            if (isset($tags[self::TAG_MAKERNOTE])) {
+                array_push($ranges, ...$this->olympusPreviews($stream, ...$tags[self::TAG_MAKERNOTE]));
             }
             // DNG / manche ARWs speichern die Vorschau als einzelnen JPEG-komprimierten Strip.
             if (in_array($tags[self::TAG_COMPRESSION][0] ?? 0, [6, 7], true)
@@ -280,12 +323,16 @@ class RawPreviewExtractor
     // ─── TIFF-Parsing ─────────────────────────────────────────────────────────
 
     /**
-     * Liest ein IFD — nur die Tags aus WANTED_TAGS (SHORT/LONG/IFD, max. 64 Werte).
+     * Liest ein IFD — nur die Tags aus $wanted (SHORT/LONG/IFD, max. 64 Werte).
+     * UNDEFINED-Blobs (Typ 7) liefern [Offset, Länge] statt ihres Inhalts.
+     * $base: Bezugspunkt für Offsets (0 = Dateianfang, MakerNotes: ihr Anfang);
+     * zurückgegebene Offsets bleiben relativ zu $base.
      *
-     * @param  resource $stream
+     * @param  resource  $stream
+     * @param  list<int> $wanted
      * @return array{tags: array<int, list<int>>, next: int}|null
      */
-    private function readIfd($stream, int $offset, bool $le): ?array
+    private function readIfd($stream, int $offset, bool $le, array $wanted = self::WANTED_TAGS, int $base = 0): ?array
     {
         $countRaw = $this->readRange($stream, $offset, 2);
         if ($countRaw === null || strlen($countRaw) < 2) {
@@ -307,15 +354,25 @@ class RawPreviewExtractor
             $tag   = $this->u16(substr($entry, 0, 2), $le);
             $type  = $this->u16(substr($entry, 2, 2), $le);
             $n     = $this->u32(substr($entry, 4, 4), $le);
+            if (!in_array($tag, $wanted, true)) {
+                continue;
+            }
+            // 7 = UNDEFINED: nur die Position merken, nicht lesen (kann ein ganzes JPEG sein)
+            if ($type === 7) {
+                if ($n > 4) {
+                    $tags[$tag] = [$this->u32(substr($entry, 8, 4), $le), $n];
+                }
+                continue;
+            }
             // 3 = SHORT, 4 = LONG, 13 = IFD
-            if (!in_array($tag, self::WANTED_TAGS, true) || !in_array($type, [3, 4, 13], true) || $n === 0 || $n > 64) {
+            if (!in_array($type, [3, 4, 13], true) || $n === 0 || $n > 64) {
                 continue;
             }
             $size  = $type === 3 ? 2 : 4;
             $bytes = $n * $size;
             $raw   = $bytes <= 4
                 ? substr($entry, 8, $bytes)
-                : $this->readRange($stream, $this->u32(substr($entry, 8, 4), $le), $bytes);
+                : $this->readRange($stream, $base + $this->u32(substr($entry, 8, 4), $le), $bytes);
             if ($raw === null || strlen($raw) < $bytes) {
                 continue;
             }
@@ -332,6 +389,53 @@ class RawPreviewExtractor
             : 0;
 
         return ['tags' => $tags, 'next' => $next];
+    }
+
+    /**
+     * Vorschau-Bereiche aus einer Olympus/OM-System-MakerNote (ORF). Andere
+     * MakerNotes (Nikon, Canon, …) → leer; deren Vorschauen liegen in normalen IFDs.
+     *
+     * @param  resource $stream
+     * @return list<array{0: int, 1: int}> [offset, length]
+     */
+    private function olympusPreviews($stream, int $offset, int $length): array
+    {
+        $head = $this->readRange($stream, $offset, 16);
+        if ($head === null || strlen($head) < 16 || $length < 16) {
+            return [];
+        }
+        // Offsets in der MakerNote sind relativ zu ihrem Anfang
+        if (str_starts_with($head, "OLYMPUS\x00")) {
+            [$ifdAt, $order] = [12, substr($head, 8, 2)];
+        } elseif (str_starts_with($head, "OM SYSTEM\x00")) {
+            [$ifdAt, $order] = [16, substr($head, 12, 2)];
+        } else {
+            return [];
+        }
+        if ($order !== 'II' && $order !== 'MM') {
+            return [];
+        }
+        $le = $order === 'II';
+
+        $main = $this->readIfd($stream, $offset + $ifdAt, $le, [self::OLY_THUMBNAIL, self::OLY_CAMERA_SETTINGS], $offset);
+        if ($main === null) {
+            return [];
+        }
+        $ranges = [];
+        if (isset($main['tags'][self::OLY_THUMBNAIL])) {
+            [$thumbAt, $thumbLen] = $main['tags'][self::OLY_THUMBNAIL];
+            $ranges[] = [$offset + $thumbAt, $thumbLen];
+        }
+        if (isset($main['tags'][self::OLY_CAMERA_SETTINGS])) {
+            $cs = $this->readIfd(
+                $stream, $offset + $main['tags'][self::OLY_CAMERA_SETTINGS][0], $le,
+                [self::OLY_PREVIEW_START, self::OLY_PREVIEW_LENGTH], $offset,
+            );
+            if (isset($cs['tags'][self::OLY_PREVIEW_START], $cs['tags'][self::OLY_PREVIEW_LENGTH])) {
+                $ranges[] = [$offset + $cs['tags'][self::OLY_PREVIEW_START][0], $cs['tags'][self::OLY_PREVIEW_LENGTH][0]];
+            }
+        }
+        return $ranges;
     }
 
     /**

@@ -338,7 +338,9 @@ class ShareService
                 if (!($node instanceof File)) {
                     continue;
                 }
-                if (!in_array($node->getMimeType(), self::GUEST_MIME, true)) {
+                if (!in_array($node->getMimeType(), self::GUEST_MIME, true)
+                    || !RawPreviewExtractor::isListable($node->getMimeType(), $node->getName())
+                ) {
                     continue;
                 }
                 $images[] = [
@@ -1121,6 +1123,9 @@ class ShareService
 
         $images = [];
         foreach ($rows as $row) {
+            if (!RawPreviewExtractor::isListable($row['mimetype'], $row['name'])) {
+                continue;
+            }
             $internalRelative = ltrim(substr($row['path'], strlen($rootInternalPrefix)), '/');
             $images[] = [
                 'id'       => (int) $row['fileid'],

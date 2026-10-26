@@ -34,7 +34,7 @@ class RawPreviewProvider implements IProviderV2
 
     public function isAvailable(FileInfo $file): bool
     {
-        return $file->getSize() > 0;
+        return $file->getSize() > 0 && RawPreviewExtractor::supports($file->getName());
     }
 
     public function getThumbnail(File $file, int $maxX, int $maxY): ?IImage

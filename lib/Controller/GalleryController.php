@@ -404,6 +404,7 @@ class GalleryController extends Controller
             foreach ($folder->getDirectoryListing() as $node) {
                 if (!($node instanceof File)) continue;
                 if (!in_array($node->getMimeType(), self::SUPPORTED_MIME, true)) continue;
+                if (!RawPreviewExtractor::isListable($node->getMimeType(), $node->getName())) continue;
                 $images[] = $this->buildImageEntry($node, $rootPath, $userBase, $depth);
             }
         }
@@ -486,6 +487,9 @@ class GalleryController extends Controller
 
         $images = [];
         foreach ($rows as $row) {
+            if (!RawPreviewExtractor::isListable($row['mimetype'], $row['name'])) {
+                continue;
+            }
             // Pfad relativ zum Recursion-Root, ohne führenden Slash.
             $relPath = ltrim(substr($row['path'], $rootLen), '/');
 
