@@ -187,7 +187,9 @@ XMP;
         // Lightroom-Sidecar nur mit Entwicklung (kein xmp:Rating), DB hat 4★:
         // ein reines Farb-Update darf nicht Rating=0 schreiben
         $this->db['42'] = ['rating' => 4, 'color' => null, 'pick' => 'none'];
-        $developOnly = str_replace("    xmp:Rating=\"2\"\n", '', self::LR_SIDECAR);
+        // \R statt "\n": bei Windows-Checkout (autocrlf) hat das Heredoc CRLF-Zeilenenden
+        $developOnly = preg_replace('/^[ \t]*xmp:Rating="2"\R/m', '', self::LR_SIDECAR);
+        $this->assertStringNotContainsString('xmp:Rating', $developOnly);
         $files = ['DSC_0001.xmp' => $developOnly];
         $raw   = $this->rawInFolder('DSC_0001.NEF', $files);
 
