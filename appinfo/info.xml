@@ -4,7 +4,7 @@
 
     <id>starrate</id>
     <name>StarRate</name>
-    <summary>Lightroom-style photo rating for Nextcloud — stars, color labels, XMP metadata, guest links</summary>
+    <summary>Lightroom-style photo rating for Nextcloud — stars, color labels, XMP metadata, camera RAW, guest links</summary>
 
     <description lang="en"><![CDATA[
 StarRate is a professional photo rating and culling tool for photographers, seamlessly integrated into Nextcloud.
