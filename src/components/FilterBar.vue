@@ -9,7 +9,7 @@
       <span class="sr-filterbar__label">{{ t('starrate', 'Filter:') }}</span>
 
       <!-- Sterne-Filter -->
-      <div class="sr-filterbar__group" role="group" :aria-label="t('starrate', 'Sterne')">
+      <div v-if="enableRatingUi" class="sr-filterbar__group" role="group" :aria-label="t('starrate', 'Sterne')">
         <!-- Operator-Auswahl -->
         <div class="sr-filterbar__op-group">
           <button
@@ -41,10 +41,10 @@
         >○</button>
       </div>
 
-      <div class="sr-filterbar__sep" aria-hidden="true" />
+      <div v-if="enableRatingUi" class="sr-filterbar__sep" aria-hidden="true" />
 
       <!-- Farb-Filter: kleine Kreise -->
-      <div class="sr-filterbar__group" role="group" :aria-label="t('starrate', 'Farben')">
+      <div v-if="enableColorUi" class="sr-filterbar__group" role="group" :aria-label="t('starrate', 'Farben')">
         <button
           v-for="color in colorOptions"
           :key="color.key"
@@ -58,7 +58,7 @@
         />
       </div>
 
-      <div class="sr-filterbar__sep" aria-hidden="true" />
+      <div v-if="enableColorUi" class="sr-filterbar__sep" aria-hidden="true" />
 
       <!-- Pick/Reject-Filter -->
       <div v-if="enablePickUi" class="sr-filterbar__group" role="group" :aria-label="t('starrate', 'Auswahl')">
@@ -280,6 +280,14 @@ const props = defineProps({
   mode: {
     type: String,
     default: 'grid',
+  },
+  enableRatingUi: {
+    type: Boolean,
+    default: true,
+  },
+  enableColorUi: {
+    type: Boolean,
+    default: true,
   },
   enablePickUi: {
     type: Boolean,

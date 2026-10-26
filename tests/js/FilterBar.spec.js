@@ -142,6 +142,18 @@ describe('FilterBar', () => {
 
   // ── Pick/Reject-Filter ────────────────────────────────────────────────────
 
+  it('blendet Sterne-Filter aus wenn enableRatingUi=false', () => {
+    const w = factory({ enableRatingUi: false })
+    expect(w.find('.sr-filterbar__pill--star').exists()).toBe(false)
+    expect(w.findAll('.sr-filterbar__colordot')).toHaveLength(5)
+  })
+
+  it('blendet Farb-Filter aus wenn enableColorUi=false', () => {
+    const w = factory({ enableColorUi: false })
+    expect(w.find('.sr-filterbar__colordot').exists()).toBe(false)
+    expect(w.find('.sr-filterbar__pill--star').exists()).toBe(true)
+  })
+
   it('Pick/Reject-Buttons nicht sichtbar wenn enablePickUi=false (default)', () => {
     const w = factory()
     expect(w.find('.sr-filterbar__pill--pick').exists()).toBe(false)

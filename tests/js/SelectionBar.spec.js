@@ -180,6 +180,13 @@ describe('SelectionBar', () => {
 
   // ── Pick/Reject ───────────────────────────────────────────────────────────
 
+  it('blendet Sterne- und Farb-Buttons aus wenn deaktiviert', () => {
+    const w = factory({ enableRatingUi: false, enableColorUi: false, enablePickUi: true })
+    expect(w.find('.sr-selbar__btn--star').exists()).toBe(false)
+    expect(w.find('.sr-selbar__btn--color').exists()).toBe(false)
+    expect(w.find('.sr-selbar__btn--pick').exists()).toBe(true)
+  })
+
   it('zeigt keine Pick/Reject-Buttons ohne enablePickUi', () => {
     const w = factory()
     expect(w.find('.sr-selbar__btn--pick').exists()).toBe(false)

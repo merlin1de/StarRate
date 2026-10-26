@@ -163,11 +163,13 @@
         </button>
         <div class="sr-loupe__footer-center">
           <RatingStars
+            v-if="enableRatingUi"
             :model-value="currentImage?.rating ?? 0"
             :interactive="canRate"
             @change="(r) => $emit('rate', currentImage, r, undefined)"
           />
           <ColorLabel
+            v-if="enableColorUi"
             :model-value="currentImage?.color ?? null"
             :interactive="canRate"
             @change="(c) => $emit('rate', currentImage, undefined, c)"
@@ -304,6 +306,14 @@ const props = defineProps({
   previewUrlFn: {
     type: Function,
     default: null,
+  },
+  enableRatingUi: {
+    type: Boolean,
+    default: true,
+  },
+  enableColorUi: {
+    type: Boolean,
+    default: true,
   },
   enablePickUi: {
     type: Boolean,
@@ -832,13 +842,14 @@ function onKeydown(e) {
     // Bewertungen
     case '0': case '1': case '2':
     case '3': case '4': case '5':
-      if (!e.ctrlKey && !e.metaKey) {
+      if (props.enableRatingUi && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
         emit('rate', currentImage.value, parseInt(e.key), undefined)
       }
       break
 
     case '6': case '7': case '8': case '9': {
+      if (!props.enableColorUi) break
       e.preventDefault()
       const colorMap = { '6': 'Red', '7': 'Yellow', '8': 'Green', '9': 'Blue' }
       const img = currentImage.value
@@ -849,6 +860,7 @@ function onKeydown(e) {
       break
     }
     case 'v': case 'V': {
+      if (!props.enableColorUi) break
       e.preventDefault()
       const img = currentImage.value
       if (img) emit('rate', img, undefined, img.color === 'Purple' ? null : 'Purple')

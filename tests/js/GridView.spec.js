@@ -253,6 +253,29 @@ describe('GridView', () => {
 
   // ── Pick / Reject ─────────────────────────────────────────────────────────
 
+  // ── Bewertungsarten abschaltbar ───────────────────────────────────────────
+
+  it('blendet Sterne und Farbpunkt aus wenn enableRatingUi/enableColorUi=false', () => {
+    const w = factory({ enableRatingUi: false, enableColorUi: false })
+    expect(w.find('.sr-grid__info-stars').exists()).toBe(false)
+    expect(w.find('.sr-grid__info-color').exists()).toBe(false)
+  })
+
+  it('Tasten 0–5 tun nichts wenn enableRatingUi=false', async () => {
+    const w = factory({ enableRatingUi: false })
+    await w.findAll('.sr-grid__item')[0].trigger('click')
+    await w.trigger('keydown', { key: '3' })
+    expect(w.emitted('rate')).toBeFalsy()
+  })
+
+  it('Tasten 6–9/V tun nichts wenn enableColorUi=false', async () => {
+    const w = factory({ enableColorUi: false })
+    await w.findAll('.sr-grid__item')[0].trigger('click')
+    await w.trigger('keydown', { key: '6' })
+    await w.trigger('keydown', { key: 'v' })
+    expect(w.emitted('rate')).toBeFalsy()
+  })
+
   it('Reject-Overlay nicht sichtbar wenn enablePickUi=false (default)', () => {
     const images = makeImages()
     images[0].pick = 'reject'

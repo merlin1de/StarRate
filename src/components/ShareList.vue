@@ -56,6 +56,16 @@
                     :title="t('starrate', 'Passwortgeschützt')"
                   >🔒</span>
                   <span
+                    v-if="share.permissions === 'rate' && share.allow_rating === false"
+                    class="sr-share-list__badge"
+                    :title="t('starrate', 'Sterne ausgeblendet')"
+                  >✕ ★</span>
+                  <span
+                    v-if="share.permissions === 'rate' && share.allow_color === false"
+                    class="sr-share-list__badge"
+                    :title="t('starrate', 'Farbmarkierungen ausgeblendet')"
+                  >✕ ●</span>
+                  <span
                     v-if="share.permissions === 'rate' && share.allow_pick"
                     class="sr-share-list__badge sr-share-list__badge--pick-on"
                     :title="t('starrate', 'Pick/Reject erlaubt')"

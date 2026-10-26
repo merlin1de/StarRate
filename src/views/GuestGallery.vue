@@ -34,6 +34,8 @@
     :guest-mode="true"
     :guest-label="props.guestName"
     :allow-rate="props.canRate"
+    :enable-rating-override="props.allowRating"
+    :enable-color-override="props.allowColor"
     :enable-pick-override="props.allowPick"
     :allow-export="props.allowExport"
     :allow-comment="props.allowComment"
@@ -64,6 +66,8 @@ const appVersion = __APP_VERSION__
 const props = defineProps({
   token:       { type: String,  required: true },
   canRate:     { type: Boolean, default: false },
+  allowRating:  { type: Boolean, default: true },
+  allowColor:   { type: Boolean, default: true },
   allowPick:    { type: Boolean, default: false },
   allowExport:  { type: Boolean, default: false },
   allowComment: { type: Boolean, default: false },

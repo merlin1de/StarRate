@@ -76,6 +76,8 @@ class ShareController extends Controller
                 !empty($body['recursive']),
                 isset($body['depth']) ? (int) $body['depth'] : 0,
                 !empty($body['allow_download']),
+                (bool) ($body['allow_rating'] ?? true),
+                (bool) ($body['allow_color'] ?? true),
             );
             return new DataResponse(['share' => $share], Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
@@ -258,6 +260,8 @@ class ShareController extends Controller
             'token'           => $token,
             'min_rating'      => $share['min_rating'] ?? 0,
             'can_rate'        => $share['permissions'] === ShareService::PERM_RATE,
+            'allow_rating'    => !empty($share['allow_rating']),
+            'allow_color'     => !empty($share['allow_color']),
             'allow_pick'      => !empty($share['allow_pick']),
             'allow_export'    => !empty($share['allow_export']),
             'allow_comment'   => !empty($share['allow_comment']),
@@ -478,11 +482,12 @@ class ShareController extends Controller
             return new DataResponse(['error' => 'File not in share'], Http::STATUS_FORBIDDEN);
         }
 
-        $rating    = isset($body['rating']) ? (int) $body['rating'] : null;
+        // Vom Share deaktivierte Bewertungsarten werden ignoriert (wie Pick)
+        $rating    = !empty($share['allow_rating']) && isset($body['rating']) ? (int) $body['rating'] : null;
         // color: Key vorhanden + null/'' = löschen (''), Key vorhanden + Wert = setzen,
         // Key fehlt = unverändert (null). array_key_exists statt isset, sonst würde ein
         // explizites null (Gast entfernt die Farbe) als „unverändert" verschluckt.
-        if (array_key_exists('color', $body)) {
+        if (!empty($share['allow_color']) && array_key_exists('color', $body)) {
             $rawColor = $body['color'];
             $color    = ($rawColor === null || $rawColor === '')
                 ? ''

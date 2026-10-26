@@ -11,6 +11,8 @@ const GalleryStub = defineComponent({
   props: {
     guestMode:       { type: Boolean, default: false },
     guestLabel:      { type: String,  default: '' },
+    enableRatingOverride: { type: Boolean, default: true },
+    enableColorOverride:  { type: Boolean, default: true },
     enablePickOverride: { type: Boolean, default: false },
     allowExport:     { type: Boolean, default: false },
     allowComment:    { type: Boolean, default: false },
@@ -67,6 +69,13 @@ describe('GuestGallery', () => {
     const p = galleryProps(w)
     expect(p.guestMode).toBe(true)
     expect(p.guestLabel).toBe('Max')
+  })
+
+  it('übergibt die Bewertungsarten des Shares als Overrides an Gallery', () => {
+    const p = galleryProps(factory({ allowRating: false, allowColor: true, allowPick: true }))
+    expect(p.enableRatingOverride).toBe(false)
+    expect(p.enableColorOverride).toBe(true)
+    expect(p.enablePickOverride).toBe(true)
   })
 
   it('übergibt alle Callback-Props an Gallery', () => {

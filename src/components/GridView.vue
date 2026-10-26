@@ -93,7 +93,7 @@
         <div class="sr-grid__info">
           <!-- Sterne (linke Seite) -->
           <RatingStars
-            v-if="showRatingInfo"
+            v-if="showRatingInfo && enableRatingUi"
             :model-value="image.rating"
             :interactive="false"
             :compact="true"
@@ -103,7 +103,7 @@
           <span v-if="showFilename" class="sr-grid__info-name" :title="image.name">{{ image.name }}</span>
           <!-- Farbpunkt (rechts) -->
           <span
-            v-if="showColorInfo && image.color"
+            v-if="showColorInfo && enableColorUi && image.color"
             class="sr-grid__info-color"
             :class="`sr-grid__info-color--${image.color.toLowerCase()}`"
             :title="image.color"
@@ -183,6 +183,10 @@ const props = defineProps({
   showRatingInfo:    { type: Boolean, default: true },
   /** Farbpunkt in der Info-Leiste anzeigen */
   showColorInfo:     { type: Boolean, default: true },
+  /** Sterne-Bewertung aktiv (Anzeige + Tasten 0–5) */
+  enableRatingUi:    { type: Boolean, default: true },
+  /** Farbmarkierung aktiv (Anzeige + Tasten 6–9/V) */
+  enableColorUi:     { type: Boolean, default: true },
   /** Pick/Reject-UI anzeigen */
   enablePickUi:      { type: Boolean, default: false },
   /** Sichtbar (v-show vom Parent). Wird false wenn Loupe aktiv ist —
@@ -718,7 +722,7 @@ function onGlobalKeydown(e) {
     // Sternebewertung (0–5)
     case '0': case '1': case '2':
     case '3': case '4': case '5':
-      if (!e.shiftKey) {
+      if (props.enableRatingUi && !e.shiftKey) {
         e.preventDefault()
         if (selectedIds.value.size > 0) {
           emit('batch-rate', parseInt(e.key), undefined, undefined)
@@ -731,6 +735,7 @@ function onGlobalKeydown(e) {
 
     // Farben (6=Rot, 7=Gelb, 8=Grün, 9=Blau, V=Lila) — Toggle
     case '6': case '7': case '8': case '9': {
+      if (!props.enableColorUi) break
       e.preventDefault()
       const colorMap = { '6': 'Red', '7': 'Yellow', '8': 'Green', '9': 'Blue' }
       const c = colorMap[e.key]
@@ -745,7 +750,7 @@ function onGlobalKeydown(e) {
       break
     }
     case 'v': case 'V':
-      if (!e.ctrlKey && !e.metaKey) {
+      if (props.enableColorUi && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
         if (selectedIds.value.size > 0) {
           const sel = props.images.filter(img => selectedIds.value.has(img.id))

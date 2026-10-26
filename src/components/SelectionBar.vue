@@ -18,10 +18,10 @@
           </button>
         </div>
 
-        <div class="sr-selbar__sep" />
+        <div v-if="enableRatingUi" class="sr-selbar__sep" />
 
         <!-- Sterne-Buttons -->
-        <div class="sr-selbar__section" :aria-label="t('starrate', 'Bewertung setzen')">
+        <div v-if="enableRatingUi" class="sr-selbar__section" :aria-label="t('starrate', 'Bewertung setzen')">
           <span class="sr-selbar__label">{{ t('starrate', 'Bewertung:') }}</span>
           <button
             v-for="star in [0, 1, 2, 3, 4, 5]"
@@ -37,10 +37,10 @@
           </button>
         </div>
 
-        <div class="sr-selbar__sep" />
+        <div v-if="enableColorUi" class="sr-selbar__sep" />
 
         <!-- Farb-Buttons -->
-        <div class="sr-selbar__section" :aria-label="t('starrate', 'Farbe setzen')">
+        <div v-if="enableColorUi" class="sr-selbar__section" :aria-label="t('starrate', 'Farbe setzen')">
           <span class="sr-selbar__label">{{ t('starrate', 'Farbe:') }}</span>
           <button
             v-for="color in COLORS"
@@ -123,6 +123,14 @@ defineProps({
   activePick: {
     type: String,
     default: undefined,
+  },
+  enableRatingUi: {
+    type: Boolean,
+    default: true,
+  },
+  enableColorUi: {
+    type: Boolean,
+    default: true,
   },
   enablePickUi: {
     type: Boolean,

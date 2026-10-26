@@ -309,3 +309,29 @@ describe('LoupeView Doppelklick-Zoom', () => {
     expect(label()).toBe('Eingepasst')
   })
 })
+
+describe('LoupeView Bewertungsarten abschaltbar', () => {
+  let wrapper
+
+  afterEach(() => wrapper?.unmount())
+
+  it('blendet Sterne und Farben aus wenn enableRatingUi/enableColorUi=false', () => {
+    wrapper = factory({ enableRatingUi: false, enableColorUi: false })
+    expect(wrapper.find('.sr-loupe__footer-center .sr-stars').exists()).toBe(false)
+    expect(wrapper.find('.sr-loupe__footer-center .sr-color-label').exists()).toBe(false)
+  })
+
+  it('Tasten für ausgeblendete Bewertungsarten emittieren kein "rate"', () => {
+    wrapper = factory({ enableRatingUi: false, enableColorUi: false })
+    for (const key of ['4', '6', 'v']) {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key }))
+    }
+    expect(wrapper.emitted('rate')).toBeFalsy()
+  })
+
+  it('Taste 4 bewertet weiterhin wenn nur Farben ausgeblendet sind', () => {
+    wrapper = factory({ enableColorUi: false })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: '4' }))
+    expect(wrapper.emitted('rate')?.[0][1]).toBe(4)
+  })
+})

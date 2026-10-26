@@ -71,6 +71,18 @@ describe('ShareModal', () => {
     expect(w.find('[data-testid="allow-pick"]').exists()).toBe(false)
   })
 
+  it('Sterne- und Farb-Checkbox bei permissions=rate standardmäßig an', () => {
+    const w = factory()
+    expect(w.find('[data-testid="allow-rating"]').element.checked).toBe(true)
+    expect(w.find('[data-testid="allow-color"]').element.checked).toBe(true)
+  })
+
+  it('übernimmt eigene Bewertungsarten als Vorbelegung für neue Links', () => {
+    const w = factory({ ratingDefault: false })
+    expect(w.find('[data-testid="allow-rating"]').element.checked).toBe(false)
+    expect(w.find('[data-testid="allow-color"]').element.checked).toBe(true)
+  })
+
   // ── Passwort ──────────────────────────────────────────────────────────────
 
   it('Passwort-Feld initial als password-Typ', () => {
@@ -206,6 +218,49 @@ describe('ShareModal', () => {
 
     const body = axios.post.mock.calls[0][1]
     expect(body.allow_pick).toBe(false)
+  })
+
+  it('sendet allow_rating=false wenn nur Farben und Pick erlaubt sind', async () => {
+    axios.post.mockResolvedValueOnce({ data: { share: { token: 'x' } } })
+    const w = factory()
+
+    await w.find('.sr-share-modal__input[type="text"]').setValue('Anna')
+    await w.find('[data-testid="allow-rating"]').setValue(false)
+    await w.find('[data-testid="allow-pick"]').setValue(true)
+    await w.find('.sr-share-modal__form').trigger('submit')
+    await flushPromises()
+
+    const body = axios.post.mock.calls[0][1]
+    expect(body.allow_rating).toBe(false)
+    expect(body.allow_color).toBe(true)
+    expect(body.allow_pick).toBe(true)
+  })
+
+  it('verlangt mindestens eine Bewertungsart bei permissions=rate', async () => {
+    const w = factory()
+
+    await w.find('.sr-share-modal__input[type="text"]').setValue('Anna')
+    await w.find('[data-testid="allow-rating"]').setValue(false)
+    await w.find('[data-testid="allow-color"]').setValue(false)
+    await w.find('.sr-share-modal__form').trigger('submit')
+    await flushPromises()
+
+    expect(axios.post).not.toHaveBeenCalled()
+    expect(w.text()).toContain('Bitte mindestens eine Bewertungsart erlauben.')
+  })
+
+  it('sendet allow_rating/allow_color=true bei permissions=view', async () => {
+    axios.post.mockResolvedValueOnce({ data: { share: { token: 'x' } } })
+    const w = factory()
+
+    await w.find('[data-testid="allow-rating"]').setValue(false)
+    await w.findAll('.sr-share-modal__toggle')[0].trigger('click') // view
+    await w.find('.sr-share-modal__form').trigger('submit')
+    await flushPromises()
+
+    const body = axios.post.mock.calls[0][1]
+    expect(body.allow_rating).toBe(true)
+    expect(body.allow_color).toBe(true)
   })
 
   it('sendet kein Passwort wenn leer', async () => {

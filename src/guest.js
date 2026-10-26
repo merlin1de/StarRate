@@ -19,6 +19,8 @@ const el = document.getElementById('starrate-guest-root')
 if (el) {
   const token        = el.dataset.token        ?? ''
   const canRate      = el.dataset.canRate      === 'true'
+  const allowRating  = el.dataset.allowRating  !== 'false'
+  const allowColor   = el.dataset.allowColor   !== 'false'
   const allowPick    = el.dataset.allowPick    === 'true'
   const allowExport  = el.dataset.allowExport  === 'true'
   const allowComment = el.dataset.allowComment === 'true'
@@ -34,7 +36,7 @@ if (el) {
     ],
   })
 
-  const app = createApp(GuestGallery, { token, canRate, allowPick, allowExport, allowComment, allowDownload, guestName })
+  const app = createApp(GuestGallery, { token, canRate, allowRating, allowColor, allowPick, allowExport, allowComment, allowDownload, guestName })
   app.use(router)
   router.isReady().then(() => app.mount(el))
 }

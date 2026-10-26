@@ -13,11 +13,11 @@
           <!-- Spalten-Auswahl -->
           <div class="sr-export-modal__columns">
             <span class="sr-export-modal__col-fixed">{{ t('starrate', 'Dateiname') }}</span>
-            <label class="sr-export-modal__col-label">
+            <label v-if="showRatingCol" class="sr-export-modal__col-label">
               <input type="checkbox" v-model="cols.rating" class="sr-export-modal__checkbox" />
               {{ t('starrate', 'Sterne') }}
             </label>
-            <label class="sr-export-modal__col-label">
+            <label v-if="showColorCol" class="sr-export-modal__col-label">
               <input type="checkbox" v-model="cols.color" class="sr-export-modal__checkbox" />
               {{ t('starrate', 'Farbe') }}
             </label>
@@ -59,8 +59,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { t } from '@nextcloud/l10n'
 
 const props = defineProps({
-  images:      { type: Array,   required: true },
-  showPickCol: { type: Boolean, default: false },
+  images:        { type: Array,   required: true },
+  showRatingCol: { type: Boolean, default: true },
+  showColorCol:  { type: Boolean, default: true },
+  showPickCol:   { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['close'])

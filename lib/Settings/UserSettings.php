@@ -62,6 +62,11 @@ class UserSettings implements ISettings
             'show_rating_overlay'      => $this->getBool($userId, 'show_rating_overlay', true),
             'show_color_overlay'       => $this->getBool($userId, 'show_color_overlay', true),
             'grid_columns'             => $this->get($userId, 'grid_columns', 'auto'),
+            // Bewertungsarten einzeln abschaltbar — wer nur mit Farben/Pick arbeitet,
+            // blendet die Sterne aus (und umgekehrt). Vorhandene Bewertungen bleiben erhalten.
+            // Neue Freigabe-Links übernehmen diese Werte als Vorbelegung.
+            'enable_rating_ui'         => $this->getBool($userId, 'enable_rating_ui', true),
+            'enable_color_ui'          => $this->getBool($userId, 'enable_color_ui', true),
             'enable_pick_ui'           => $this->getBool($userId, 'enable_pick_ui', false),
             'write_xmp'                => $this->getBool($userId, 'write_xmp', true),
             // Kamera-RAWs (NEF, CR3, …) im Grid und in Gast-Galerien zeigen. Opt-in:
@@ -70,6 +75,9 @@ class UserSettings implements ISettings
             // RAW (NEF etc.): Bewertung als XMP-Sidecar neben die RAW-Datei schreiben
             // (DSC_0001.NEF → DSC_0001.xmp). Wirkt nur zusammen mit show_raw + write_xmp.
             'write_raw_sidecar'        => $this->getBool($userId, 'write_raw_sidecar', true),
+            // TIFF im Grid zeigen. Default an (Bestandsverhalten) — wer TIFFs nur für den
+            // Round-Trip in andere Editoren nutzt, blendet sie beim Sichten aus.
+            'show_tiff'                => $this->getBool($userId, 'show_tiff', true),
             // XMP-Label-Sprache: 'de' = Lightroom DE-Lokalisierung (Rot/Gelb/…),
             // 'en' = Bridge/digiKam/englische Tools (Red/Yellow/…). Default leitet
             // sich aus der NC-UI-Sprache ab (de_* → de, sonst en) damit DE-User
@@ -102,7 +110,9 @@ class UserSettings implements ISettings
         $allowed = [
             'default_sort', 'default_sort_order',
             'show_filename', 'show_rating_overlay',
-            'show_color_overlay', 'grid_columns', 'enable_pick_ui', 'write_xmp', 'show_raw', 'write_raw_sidecar', 'comments_enabled',
+            'show_color_overlay', 'grid_columns',
+            'enable_rating_ui', 'enable_color_ui', 'enable_pick_ui',
+            'write_xmp', 'show_raw', 'write_raw_sidecar', 'show_tiff', 'comments_enabled',
             'recursion_enabled', 'recursive_default', 'recursive_default_depth',
             'slideshow_interval',
             'xmp_label_language',
@@ -153,7 +163,8 @@ class UserSettings implements ISettings
             'slideshow_interval' => $this->assertIn($key, (int) $value, self::SLIDESHOW_INTERVALS),
             'xmp_label_language' => $this->assertIn($key, $value, XmpService::VALID_LABEL_LANGS),
             'show_filename', 'show_rating_overlay', 'show_color_overlay',
-            'enable_pick_ui', 'write_xmp', 'show_raw', 'write_raw_sidecar', 'comments_enabled',
+            'enable_rating_ui', 'enable_color_ui', 'enable_pick_ui',
+            'write_xmp', 'show_raw', 'write_raw_sidecar', 'show_tiff', 'comments_enabled',
             'recursion_enabled', 'recursive_default' => null,
         };
     }

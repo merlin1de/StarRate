@@ -5,6 +5,8 @@
 
 $token        = $_['token']         ?? '';
 $canRate      = $_['can_rate']      ?? false;
+$allowRating  = $_['allow_rating']  ?? true;
+$allowColor   = $_['allow_color']   ?? true;
 $allowPick    = $_['allow_pick']    ?? false;
 $allowExport  = $_['allow_export']  ?? false;
 $allowComment = $_['allow_comment'] ?? false;
@@ -19,6 +21,8 @@ $serverUrl = rtrim($serverUrl, '/');
   id="starrate-guest-root"
   data-token="<?= htmlspecialchars($token, ENT_QUOTES) ?>"
   data-can-rate="<?= $canRate ? 'true' : 'false' ?>"
+  data-allow-rating="<?= $allowRating ? 'true' : 'false' ?>"
+  data-allow-color="<?= $allowColor ? 'true' : 'false' ?>"
   data-allow-pick="<?= $allowPick ? 'true' : 'false' ?>"
   data-allow-export="<?= $allowExport ? 'true' : 'false' ?>"
   data-allow-comment="<?= $allowComment ? 'true' : 'false' ?>"

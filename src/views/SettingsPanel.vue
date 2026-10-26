@@ -5,6 +5,18 @@
       <h3 class="sr-settings__heading">{{ t('starrate', 'Funktionen') }}</h3>
       <div class="sr-settings__row">
         <label class="sr-settings__label sr-settings__label--check">
+          <input type="checkbox" v-model="form.enable_rating_ui" @change="autosave" />
+          {{ t('starrate', 'Sterne-Bewertung aktivieren') }}
+        </label>
+      </div>
+      <div class="sr-settings__row">
+        <label class="sr-settings__label sr-settings__label--check">
+          <input type="checkbox" v-model="form.enable_color_ui" @change="autosave" />
+          {{ t('starrate', 'Farbmarkierungen aktivieren') }}
+        </label>
+      </div>
+      <div class="sr-settings__row">
+        <label class="sr-settings__label sr-settings__label--check">
           <input type="checkbox" v-model="form.enable_pick_ui" @change="autosave" />
           {{ t('starrate', 'Pick / Reject aktivieren') }}
         </label>
@@ -18,6 +30,12 @@
       <p v-if="form.show_raw" class="sr-settings__hint">
         {{ t('starrate', 'Vorschau ist das JPEG, das die Kamera in die RAW-Datei einbettet. Liegen RAW und JPEG im selben Ordner, erscheint jedes Foto zweimal.') }}
       </p>
+      <div class="sr-settings__row">
+        <label class="sr-settings__label sr-settings__label--check">
+          <input type="checkbox" v-model="form.show_tiff" @change="autosave" />
+          {{ t('starrate', 'TIFF-Dateien anzeigen') }}
+        </label>
+      </div>
       <div class="sr-settings__row">
         <label class="sr-settings__label sr-settings__label--check">
           <input type="checkbox" v-model="form.write_xmp" @change="autosave" />
@@ -79,13 +97,13 @@
           {{ t('starrate', 'Dateiname anzeigen') }}
         </label>
       </div>
-      <div class="sr-settings__row">
+      <div v-if="form.enable_rating_ui" class="sr-settings__row">
         <label class="sr-settings__label sr-settings__label--check">
           <input type="checkbox" v-model="form.show_rating_overlay" @change="autosave" />
           {{ t('starrate', 'Sterne in Info-Leiste') }}
         </label>
       </div>
-      <div class="sr-settings__row">
+      <div v-if="form.enable_color_ui" class="sr-settings__row">
         <label class="sr-settings__label sr-settings__label--check">
           <input type="checkbox" v-model="form.show_color_overlay" @change="autosave" />
           {{ t('starrate', 'Farbpunkt in Info-Leiste') }}
@@ -198,10 +216,13 @@ const DEFAULTS = {
   show_rating_overlay:       true,
   show_color_overlay:        true,
   grid_columns:             'auto',
+  enable_rating_ui:          true,
+  enable_color_ui:           true,
   enable_pick_ui:            false,
   write_xmp:                 true,
   show_raw:                  false,
   write_raw_sidecar:         true,
+  show_tiff:                 true,
   xmp_label_language:        'en',  // Server-seitig basierend auf User-Locale gesetzt
   comments_enabled:          false,
   recursion_enabled:         false,

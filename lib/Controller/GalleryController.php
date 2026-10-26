@@ -33,13 +33,16 @@ class GalleryController extends Controller
 {
     use StarRateControllerTrait;
 
+    // TIFF ist abschaltbar (show_tiff)
+    private const TIFF_MIME = 'image/tiff';
+
     // Unterstützte Bildformate
     private const SUPPORTED_MIME = [
         'image/jpeg',
         'image/jpg',
         'image/png',
         'image/webp',
-        'image/tiff',
+        self::TIFF_MIME,
         'image/heic',
         'image/heif',
         RawPreviewExtractor::MIME,
@@ -145,9 +148,11 @@ class GalleryController extends Controller
             // Vollständige sortierte Liste — gecached (siehe getListCache()).
             // Metadaten werden bewusst NICHT mit gecached: sie ändern sich
             // häufig (jede Bewertung), die Liste hingegen nur bei add/remove.
-            // RAWs sind opt-in (show_raw) — eigener Cache-Key je Schalterstellung
-            $showRaw   = !empty($this->userSettings->getSettings($userId)['show_raw']);
-            $allImages = $this->listImagesCached($folder, $userFolder, $sort, $order, $recursive, $depth, $showRaw);
+            // RAWs (show_raw, opt-in) und TIFFs (show_tiff) abschaltbar — eigener Cache-Key je Schalterstellung
+            $settings  = $this->userSettings->getSettings($userId);
+            $showRaw   = !empty($settings['show_raw']);
+            $showTiff  = !empty($settings['show_tiff']);
+            $allImages = $this->listImagesCached($folder, $userFolder, $sort, $order, $recursive, $depth, $showRaw, $showTiff);
             $total     = count($allImages);
 
             // Pagination-Slicing
@@ -339,6 +344,17 @@ class GalleryController extends Controller
     // ─── Hilfsmethoden ────────────────────────────────────────────────────────
 
     /**
+     * Gelistete MIME-Typen: ohne show_tiff fallen TIFFs heraus (z. B. Round-Trip-Dateien
+     * aus anderen Editoren, die beim Sichten nur stören). RAWs regelt show_raw separat.
+     *
+     * @return list<string>
+     */
+    private static function listedMimes(bool $showTiff): array
+    {
+        return $showTiff ? self::SUPPORTED_MIME : array_values(array_diff(self::SUPPORTED_MIME, [self::TIFF_MIME]));
+    }
+
+    /**
      * Cache-Wrapper um listImages: liefert die vollständige sortierte Liste
      * (ohne Metadaten) aus der Distributed-Cache, sonst frisch generiert.
      *
@@ -349,14 +365,14 @@ class GalleryController extends Controller
      */
     private function listImagesCached(
         Folder $folder, Folder $userFolder, string $sort, string $order,
-        bool $recursive, int $depth, bool $showRaw,
+        bool $recursive, int $depth, bool $showRaw, bool $showTiff,
     ): array {
-        // v3: RAW-MIME-Typ ergänzt, Key enthält show_raw.
+        // v3: RAW-MIME-Typ ergänzt, Key enthält show_raw und show_tiff.
         // v2: Cache-Format-Bump — neue Felder (relPath/groupKey) und neuer
         // Recursive-DB-Pfad (anderes path-Format als v1).
         $key = sprintf(
-            'list-v3:%d:%s:%s:r%d:d%d:raw%d',
-            $folder->getId(), $sort, $order, $recursive ? 1 : 0, $depth, $showRaw ? 1 : 0,
+            'list-v3:%d:%s:%s:r%d:d%d:raw%d:tif%d',
+            $folder->getId(), $sort, $order, $recursive ? 1 : 0, $depth, $showRaw ? 1 : 0, $showTiff ? 1 : 0,
         );
 
         $cached = $this->getListCache()->get($key);
@@ -364,7 +380,7 @@ class GalleryController extends Controller
             return $cached;
         }
 
-        $images = $this->listImages($folder, $userFolder, $sort, $order, $recursive, $depth, $showRaw);
+        $images = $this->listImages($folder, $userFolder, $sort, $order, $recursive, $depth, $showRaw, $showTiff);
         $this->getListCache()->set($key, $images, self::LIST_CACHE_TTL);
         return $images;
     }
@@ -389,8 +405,9 @@ class GalleryController extends Controller
      */
     private function listImages(
         Folder $folder, Folder $userFolder, string $sort, string $order,
-        bool $recursive, int $depth, bool $showRaw,
+        bool $recursive, int $depth, bool $showRaw, bool $showTiff,
     ): array {
+        $mimes    = self::listedMimes($showTiff);
         $rootPath = $folder->getPath();
         $userBase = $userFolder->getPath();
 
@@ -403,11 +420,11 @@ class GalleryController extends Controller
             // bei /). Die direkte oc_filecache-Query liefert nur Roh-Rows und
             // baut daraus unsere kompakten Image-Arrays — Faktor ~10× weniger
             // Speicher.
-            $images = $this->listImagesRecursiveFromDb($folder, $userBase, $depth, $showRaw);
+            $images = $this->listImagesRecursiveFromDb($folder, $userBase, $depth, $showRaw, $mimes);
         } else {
             foreach ($folder->getDirectoryListing() as $node) {
                 if (!($node instanceof File)) continue;
-                if (!in_array($node->getMimeType(), self::SUPPORTED_MIME, true)) continue;
+                if (!in_array($node->getMimeType(), $mimes, true)) continue;
                 if (!RawPreviewExtractor::isListable($node->getMimeType(), $node->getName(), $showRaw)) continue;
                 $images[] = $this->buildImageEntry($node, $rootPath, $userBase, $depth);
             }
@@ -441,8 +458,10 @@ class GalleryController extends Controller
      * Mounts und externe Storages bleiben außen vor — entspricht dem typischen
      * 'meine eigenen Fotos rekursiv'-Use-Case und vermeidet permission-
      * Komplexität.
+     *
+     * @param list<string> $mimes Ergebnis von listedMimes()
      */
-    private function listImagesRecursiveFromDb(Folder $folder, string $userBase, int $depth, bool $showRaw): array
+    private function listImagesRecursiveFromDb(Folder $folder, string $userBase, int $depth, bool $showRaw, array $mimes): array
     {
         // Echte (storage, internalPath) des Recursion-Roots direkt aus dem
         // Filecache holen — NICHT aus der gewrappten Node-Sicht. Bei Group
@@ -469,7 +488,7 @@ class GalleryController extends Controller
             ->where($qb->expr()->eq('fc.storage', $qb->createNamedParameter($storageId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->like('fc.path', $qb->createNamedParameter($pathPrefix)))
             ->andWhere($qb->expr()->in('mt.mimetype', $qb->createNamedParameter(
-                RawPreviewExtractor::queryMimes(self::SUPPORTED_MIME, $showRaw),
+                RawPreviewExtractor::queryMimes($mimes, $showRaw),
                 \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_STR_ARRAY,
             )))
             // Hidden-Ordner ausschließen: NC-interne Preview-Caches (.@__thumb,

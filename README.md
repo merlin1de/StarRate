@@ -50,8 +50,10 @@ Rate in Nextcloud → open in Lightroom → stars are already there.
 | ⭐ Star rating | 0–5 stars, hover preview, keyboard shortcuts `0`–`5` |
 | 🎨 Color labels | Red / Yellow / Green / Blue / Purple (keys `6`–`9`) |
 | 🚩 Pick / Reject | Flag images with `P` / `X`, batch support via selection bar |
+| 🎚️ Rating types | Stars, color labels and Pick/Reject can each be switched off — in your settings and per guest link (e.g. a client link with colors and Pick/Reject only) |
 | 📝 XMP metadata | Ratings written directly into JPEG (APP1 segment) |
 | 📷 Camera RAW | Opt-in (*Settings → Show camera RAWs*): NEF, CR2, CR3, ARW, DNG, PEF, ORF, RW2, RAF in grid, loupe and guest galleries. The preview is the JPEG the camera embeds (no demosaicing, no extra server packages); ratings go into an XMP sidecar. If the [Camera RAW Previews](https://apps.nextcloud.com/apps/camerarawpreviews) app is enabled, StarRate uses its previews instead |
+| 🗂️ TIFF | Listed by default; switch off (*Settings → Show TIFF files*) when TIFFs are only round-trip files from another editor |
 | 📥 XMP import | `occ starrate:import-xmp` — import existing ratings from Lightroom, digiKam, etc. |
 | 💬 Comments | Per-photo notes in loupe view — owner and guests can comment |
 | 📤 Export | CSV download or clipboard copy of ratings and metadata |
@@ -83,7 +85,7 @@ Rate in Nextcloud → open in Lightroom → stars are already there.
 ## Guest Sharing — The Client Workflow
 
 1. Open a folder in StarRate → click **Share**
-2. Set permission to **View + Rate** or **View only**
+2. Set permission to **View + Rate** or **View only**, and choose which rating types the guest gets (stars, color labels, Pick/Reject)
 3. Optionally: add a password, expiry date, and minimum star filter
 4. Copy the link → send to your client or model
 

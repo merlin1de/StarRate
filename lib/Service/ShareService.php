@@ -79,6 +79,8 @@ class ShareService
         bool    $recursive = false,
         int     $depth = 0,
         bool    $allowDownload = false,
+        bool    $allowRating = true,
+        bool    $allowColor = true,
     ): array {
         $this->validatePermissions($permissions);
 
@@ -96,6 +98,8 @@ class ShareService
             'min_rating'    => max(0, min(5, $minRating)),
             'permissions'   => $permissions,
             'guest_name'    => $guestName ? trim($guestName) : null,
+            'allow_rating'  => $allowRating,
+            'allow_color'   => $allowColor,
             'allow_pick'    => $allowPick,
             'allow_export'  => $allowExport,
             'allow_comment' => $allowComment,
@@ -136,6 +140,9 @@ class ShareService
                 $share                 = $shares[$token];
                 $share['has_password'] = !empty($share['password_hash']);
                 $share['allow_download'] = $share['allow_download'] ?? false;
+                // Ältere Shares kennen nur Pick als Schalter — Sterne und Farben waren immer an
+                $share['allow_rating']   = $share['allow_rating'] ?? true;
+                $share['allow_color']    = $share['allow_color'] ?? true;
                 return $share;
             }
         }
@@ -154,6 +161,8 @@ class ShareService
         return array_values(array_map(function (array $s): array {
             $s['has_password'] = !empty($s['password_hash']);
             $s['allow_download'] = $s['allow_download'] ?? false;
+            $s['allow_rating']   = $s['allow_rating'] ?? true;
+            $s['allow_color']    = $s['allow_color'] ?? true;
             unset($s['password_hash']);
             return $s;
         }, $shares));
@@ -195,6 +204,12 @@ class ShareService
         }
         if (isset($data['active'])) {
             $all[$token]['active'] = (bool) $data['active'];
+        }
+        if (isset($data['allow_rating'])) {
+            $all[$token]['allow_rating'] = (bool) $data['allow_rating'];
+        }
+        if (isset($data['allow_color'])) {
+            $all[$token]['allow_color'] = (bool) $data['allow_color'];
         }
         if (isset($data['allow_pick'])) {
             $all[$token]['allow_pick'] = (bool) $data['allow_pick'];

@@ -144,6 +144,53 @@ class ShareServiceTest extends TestCase
         $this->assertTrue($share['allow_download']);
     }
 
+    public function testCreateShareDefaultsAllowRatingAndColorTrue(): void
+    {
+        $this->secureRandom->method('generate')->willReturn(self::SAMPLE_TOKEN);
+        $this->config->method('getUserValue')->willReturn('{}');
+        $this->config->method('setUserValue');
+
+        $share = $this->service->createShare(
+            self::OWNER_ID, '/Fotos', null, null, 0, ShareService::PERM_RATE
+        );
+
+        $this->assertTrue($share['allow_rating']);
+        $this->assertTrue($share['allow_color']);
+    }
+
+    public function testCreateShareWithOnlyPickAndColor(): void
+    {
+        $this->secureRandom->method('generate')->willReturn(self::SAMPLE_TOKEN);
+        $this->config->method('getUserValue')->willReturn('{}');
+        $this->config->method('setUserValue');
+
+        // Positionell: …, allowPick, allowExport, allowComment, recursive, depth, allowDownload, allowRating, allowColor
+        $share = $this->service->createShare(
+            self::OWNER_ID, '/Fotos', null, null, 0, ShareService::PERM_RATE,
+            'Anna', true, false, false, false, 0, false, false, true
+        );
+
+        $this->assertFalse($share['allow_rating']);
+        $this->assertTrue($share['allow_color']);
+        $this->assertTrue($share['allow_pick']);
+    }
+
+    public function testGetSharesByOwnerDefaultsRatingTypesForOlderShares(): void
+    {
+        // Shares ohne allow_rating/allow_color (vor diesem Schalter angelegt) zeigen weiter Sterne und Farben
+        $existing = [self::SAMPLE_TOKEN => [
+            'token' => self::SAMPLE_TOKEN, 'owner_id' => self::OWNER_ID,
+            'nc_path' => '/Fotos', 'password_hash' => null,
+            'permissions' => ShareService::PERM_RATE, 'active' => true,
+        ]];
+        $this->config->method('getUserValue')->willReturn(json_encode($existing));
+
+        $shares = $this->service->getSharesByOwner(self::OWNER_ID);
+
+        $this->assertTrue($shares[0]['allow_rating']);
+        $this->assertTrue($shares[0]['allow_color']);
+    }
+
     public function testCreateShareWithInvalidPermissionsThrows(): void
     {
         $this->secureRandom->method('generate')->willReturn(self::SAMPLE_TOKEN);
@@ -347,6 +394,31 @@ class ShareServiceTest extends TestCase
 
         $this->assertNull($saved[self::SAMPLE_TOKEN]['expires_at']);
         $this->assertNull($updated['expires_at']);
+    }
+
+    public function testUpdateShareTogglesRatingTypes(): void
+    {
+        $existing = [self::SAMPLE_TOKEN => [
+            'token' => self::SAMPLE_TOKEN, 'owner_id' => self::OWNER_ID,
+            'nc_path' => '/Fotos', 'password_hash' => null,
+            'expires_at' => null, 'min_rating' => 0,
+            'permissions' => ShareService::PERM_RATE, 'active' => true,
+            'allow_rating' => true, 'allow_color' => true,
+            'created_at' => time(),
+        ]];
+
+        $this->db->method('getQueryBuilder')
+            ->willReturn($this->makeGetShareQb([self::OWNER_ID => $existing]));
+
+        $saved = null;
+        $this->config->method('getUserValue')->willReturn(json_encode($existing));
+        $this->config->method('setUserValue')
+            ->willReturnCallback(function ($u, $a, $k, $v) use (&$saved) { $saved = json_decode($v, true); });
+
+        $this->service->updateShare(self::SAMPLE_TOKEN, ['allow_rating' => false]);
+
+        $this->assertFalse($saved[self::SAMPLE_TOKEN]['allow_rating']);
+        $this->assertTrue($saved[self::SAMPLE_TOKEN]['allow_color']);
     }
 
     public function testUpdateShareSetsExpiryFromTimestamp(): void

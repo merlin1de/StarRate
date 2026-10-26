@@ -27,6 +27,8 @@
             <strong>Ordner:</strong> {{ createdShare.nc_path }}<br/>
             <strong>{{ t('starrate', 'Berechtigung:') }}</strong> {{ createdShare.permissions === 'rate' ? t('starrate', 'Ansehen + Bewerten') : t('starrate', 'Nur ansehen') }}<br/>
             <span v-if="createdShare.min_rating > 0"><strong>{{ t('starrate', 'Vorfilter:') }}</strong> ≥ {{ createdShare.min_rating }} ★<br/></span>
+            <span v-if="createdShare.permissions === 'rate' && !createdShare.allow_rating"><strong>{{ t('starrate', 'Sterne:') }}</strong> {{ t('starrate', 'Ausgeblendet') }}<br/></span>
+            <span v-if="createdShare.permissions === 'rate' && !createdShare.allow_color"><strong>{{ t('starrate', 'Farbmarkierungen:') }}</strong> {{ t('starrate', 'Ausgeblendet') }}<br/></span>
             <span v-if="createdShare.allow_pick"><strong>{{ t('starrate', 'Pick/Reject:') }}</strong> {{ t('starrate', 'Aktiviert') }}<br/></span>
             <span v-if="createdShare.allow_export"><strong>{{ t('starrate', 'Liste exportieren:') }}</strong> {{ t('starrate', 'Erlaubt') }}<br/></span>
             <span v-if="createdShare.has_password"><strong>{{ t('starrate', 'Passwortgeschützt') }}</strong><br/></span>
@@ -94,6 +96,14 @@
           </div>
 
           <div v-if="form.permissions === 'rate'" class="sr-share-modal__field">
+            <label class="sr-share-modal__checkbox-label">
+              <input type="checkbox" v-model="form.allowRating" class="sr-share-modal__checkbox" data-testid="allow-rating" />
+              {{ t('starrate', 'Sterne erlauben') }}
+            </label>
+            <label class="sr-share-modal__checkbox-label">
+              <input type="checkbox" v-model="form.allowColor" class="sr-share-modal__checkbox" data-testid="allow-color" />
+              {{ t('starrate', 'Farbmarkierungen erlauben') }}
+            </label>
             <label class="sr-share-modal__checkbox-label">
               <input type="checkbox" v-model="form.allowPick" class="sr-share-modal__checkbox" data-testid="allow-pick" />
               {{ t('starrate', 'Pick/Reject erlauben') }}
@@ -229,6 +239,10 @@ const props = defineProps({
   recursionEnabled:        { type: Boolean, default: false },
   recursiveDefault:        { type: Boolean, default: false },
   recursiveDefaultDepth:   { type: Number,  default: 0 },
+  // Defaults für neue Shares aus den eigenen Einstellungen (enable_rating_ui/enable_color_ui):
+  // wer selbst ohne Sterne arbeitet, muss sie nicht bei jedem Link abwählen.
+  ratingDefault:           { type: Boolean, default: true },
+  colorDefault:            { type: Boolean, default: true },
   // Edit-Modus: wenn gesetzt, prefilled wir das Formular mit den Werten aus
   // diesem Share und schicken PUT statt POST.
   editShare:               { type: Object,  default: null },
@@ -269,6 +283,8 @@ function buildInitialForm() {
       ncPath:        e.nc_path || '/',
       guestName:     e.guest_name || '',
       permissions:   e.permissions || 'rate',
+      allowRating:   e.allow_rating ?? true,
+      allowColor:    e.allow_color ?? true,
       allowPick:     !!e.allow_pick,
       allowExport:   !!e.allow_export,
       allowComment:  !!e.allow_comment,
@@ -290,6 +306,8 @@ function buildInitialForm() {
     ncPath:        props.ncPath,
     guestName:     '',
     permissions:   'rate',
+    allowRating:   props.ratingDefault,
+    allowColor:    props.colorDefault,
     allowPick:     false,
     allowExport:   false,
     allowComment:  false,
@@ -362,10 +380,19 @@ async function create() {
     saving.value    = false
     return
   }
+  if (form.value.permissions === 'rate'
+    && !form.value.allowRating && !form.value.allowColor && !form.value.allowPick) {
+    formError.value = t('starrate', 'Bitte mindestens eine Bewertungsart erlauben.')
+    saving.value    = false
+    return
+  }
 
   const body = {
     nc_path:      form.value.ncPath,
     permissions:  form.value.permissions,
+    // Sterne/Farben nur bei rate abschaltbar — Nur-ansehen-Links zeigen sie wie bisher
+    allow_rating:  form.value.permissions !== 'rate' || form.value.allowRating,
+    allow_color:   form.value.permissions !== 'rate' || form.value.allowColor,
     allow_pick:    form.value.permissions === 'rate' && form.value.allowPick,
     allow_export:  form.value.allowExport,
     allow_comment: form.value.allowComment && props.commentsGloballyEnabled,

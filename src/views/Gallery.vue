@@ -92,6 +92,8 @@
       :total="allImages.length"
       :filtered-count="filteredImages.length"
       :mode="mode"
+      :enable-rating-ui="settings.enable_rating_ui"
+      :enable-color-ui="settings.enable_color_ui"
       :enable-pick-ui="settings.enable_pick_ui"
       :allow-share="!guestMode"
       :allow-export="!guestMode || allowExport"
@@ -123,6 +125,8 @@
         :show-filename="settings.show_filename"
         :show-rating-info="settings.show_rating_overlay"
         :show-color-info="settings.show_color_overlay"
+        :enable-rating-ui="settings.enable_rating_ui"
+        :enable-color-ui="settings.enable_color_ui"
         :enable-pick-ui="settings.enable_pick_ui"
         :thumbnail-url-fn="thumbnailUrlFn"
         @rate="onRate"
@@ -140,6 +144,8 @@
         :initial-index="currentIndex"
         :on-refresh-rating="guestMode ? null : refreshImageRating"
         :preview-url-fn="previewUrlFn"
+        :enable-rating-ui="settings.enable_rating_ui"
+        :enable-color-ui="settings.enable_color_ui"
         :enable-pick-ui="settings.enable_pick_ui"
         :allow-comment="settings.comments_enabled || allowComment"
         :comment-api="commentApi"
@@ -162,6 +168,8 @@
       :active-rating="batchActiveRating"
       :active-color="batchActiveColor"
       :active-pick="batchActivePick"
+      :enable-rating-ui="settings.enable_rating_ui"
+      :enable-color-ui="settings.enable_color_ui"
       :enable-pick-ui="settings.enable_pick_ui"
       @rate="onBatchRate"
       @clear="gridRef?.clearSelection()"
@@ -185,6 +193,8 @@
       :recursion-enabled="!!settings.recursion_enabled"
       :recursive-default="!!settings.recursive_default"
       :recursive-default-depth="settings.recursive_default_depth"
+      :rating-default="settings.enable_rating_ui"
+      :color-default="settings.enable_color_ui"
       :edit-share="editingShare"
       @close="closeShareModal"
       @created="onShareCreated"
@@ -195,6 +205,8 @@
     <ExportModal
       v-if="showExportModal"
       :images="filteredImages"
+      :show-rating-col="settings.enable_rating_ui"
+      :show-color-col="settings.enable_color_ui"
       :show-pick-col="settings.enable_pick_ui"
       @close="showExportModal = false"
     />
@@ -225,14 +237,14 @@
                 <div class="sr-shortcuts-row"><kbd>{{ t('starrate', 'Doppelklick') }}</kbd><span>{{ t('starrate', '100% / Eingepasst') }}</span></div>
                 <div class="sr-shortcuts-row"><kbd>{{ t('starrate', 'Mausrad') }}</kbd><span>{{ t('starrate', 'Zoom auf Cursor') }}</span></div>
               </div>
-              <div class="sr-shortcuts-group">
+              <div v-if="settings.enable_rating_ui || settings.enable_color_ui" class="sr-shortcuts-group">
                 <div class="sr-shortcuts-group-title">{{ t('starrate', 'Bewertung') }}</div>
-                <div class="sr-shortcuts-row"><kbd>0 – 5</kbd><span>{{ t('starrate', 'Sterne setzen') }}</span></div>
-                <div class="sr-shortcuts-row"><kbd>6</kbd><span>{{ t('starrate', 'Rot') }}</span></div>
-                <div class="sr-shortcuts-row"><kbd>7</kbd><span>{{ t('starrate', 'Gelb') }}</span></div>
-                <div class="sr-shortcuts-row"><kbd>8</kbd><span>{{ t('starrate', 'Grün') }}</span></div>
-                <div class="sr-shortcuts-row"><kbd>9</kbd><span>{{ t('starrate', 'Blau') }}</span></div>
-                <div class="sr-shortcuts-row"><kbd>V</kbd><span>{{ t('starrate', 'Lila') }}</span></div>
+                <div v-if="settings.enable_rating_ui" class="sr-shortcuts-row"><kbd>0 – 5</kbd><span>{{ t('starrate', 'Sterne setzen') }}</span></div>
+                <div v-if="settings.enable_color_ui" class="sr-shortcuts-row"><kbd>6</kbd><span>{{ t('starrate', 'Rot') }}</span></div>
+                <div v-if="settings.enable_color_ui" class="sr-shortcuts-row"><kbd>7</kbd><span>{{ t('starrate', 'Gelb') }}</span></div>
+                <div v-if="settings.enable_color_ui" class="sr-shortcuts-row"><kbd>8</kbd><span>{{ t('starrate', 'Grün') }}</span></div>
+                <div v-if="settings.enable_color_ui" class="sr-shortcuts-row"><kbd>9</kbd><span>{{ t('starrate', 'Blau') }}</span></div>
+                <div v-if="settings.enable_color_ui" class="sr-shortcuts-row"><kbd>V</kbd><span>{{ t('starrate', 'Lila') }}</span></div>
               </div>
               <div v-if="settings.enable_pick_ui" class="sr-shortcuts-group">
                 <div class="sr-shortcuts-group-title">{{ t('starrate', 'Auswahl') }}</div>
@@ -300,8 +312,10 @@ const props = defineProps({
   thumbnailUrlFn: { type: Function, default: null },
   /** Weitergereicht an LoupeView */
   previewUrlFn:   { type: Function, default: null },
-  /** Überschreibt enable_pick_ui im Gast-Modus (per-Share Einstellung) */
-  enablePickOverride: { type: [Boolean, null], default: null },
+  /** Überschreiben enable_rating_ui / enable_color_ui / enable_pick_ui im Gast-Modus (per-Share Einstellung) */
+  enableRatingOverride: { type: [Boolean, null], default: null },
+  enableColorOverride:  { type: [Boolean, null], default: null },
+  enablePickOverride:   { type: [Boolean, null], default: null },
   /** Gast-Modus: Bewerten erlaubt (per-Share Einstellung, default: false).
    *  Owner ist immer erlaubt (siehe canRate-Computed). */
   allowRate: { type: Boolean, default: false },
@@ -335,6 +349,8 @@ const settings = ref({
   show_rating_overlay:       true,
   show_color_overlay:        true,
   grid_columns:             'auto',
+  enable_rating_ui:          true,
+  enable_color_ui:           true,
   enable_pick_ui:            false,
   write_xmp:                 true,
   comments_enabled:          false,
@@ -550,15 +566,18 @@ const filteredImages = computed(() => {
 
   const f = activeFilter.value
 
-  if (f.exactRating !== null) {
-    imgs = imgs.filter(i => i.rating === f.exactRating)
-  } else if (f.minRating > 0) {
-    imgs = imgs.filter(i => i.rating >= f.minRating)
-  } else if (f.maxRating !== null) {
-    imgs = imgs.filter(i => i.rating <= f.maxRating)
+  // Ausgeblendete Bewertungsarten filtern nicht (Filter kann aus URL/localStorage stammen)
+  if (settings.value.enable_rating_ui) {
+    if (f.exactRating !== null) {
+      imgs = imgs.filter(i => i.rating === f.exactRating)
+    } else if (f.minRating > 0) {
+      imgs = imgs.filter(i => i.rating >= f.minRating)
+    } else if (f.maxRating !== null) {
+      imgs = imgs.filter(i => i.rating <= f.maxRating)
+    }
   }
 
-  if (f.color) {
+  if (f.color && settings.value.enable_color_ui) {
     imgs = imgs.filter(i => i.color === f.color)
   }
 
@@ -570,10 +589,12 @@ const filteredImages = computed(() => {
 })
 
 const hasActiveFilter = computed(() =>
-  activeFilter.value.minRating > 0 ||
-  activeFilter.value.exactRating !== null ||
-  activeFilter.value.maxRating !== null ||
-  activeFilter.value.color !== null ||
+  (settings.value.enable_rating_ui && (
+    activeFilter.value.minRating > 0 ||
+    activeFilter.value.exactRating !== null ||
+    activeFilter.value.maxRating !== null
+  )) ||
+  (settings.value.enable_color_ui && activeFilter.value.color !== null) ||
   (settings.value.enable_pick_ui && activeFilter.value.pick !== null)
 )
 
@@ -663,7 +684,17 @@ watch([currentPath, recursive, depth], () => {
   if (loadGate) loadImages()
 })
 
-// Pick-Filter zurücksetzen wenn Pick-UI deaktiviert wird
+// Filter zurücksetzen wenn die zugehörige Bewertungsart deaktiviert wird
+watch(() => settings.value.enable_rating_ui, enabled => {
+  if (!enabled) {
+    activeFilter.value = { ...activeFilter.value, minRating: 0, exactRating: null, maxRating: null }
+  }
+})
+watch(() => settings.value.enable_color_ui, enabled => {
+  if (!enabled && activeFilter.value.color !== null) {
+    activeFilter.value = { ...activeFilter.value, color: null }
+  }
+})
 watch(() => settings.value.enable_pick_ui, enabled => {
   if (!enabled && activeFilter.value.pick !== null) {
     activeFilter.value = { ...activeFilter.value, pick: null }
@@ -965,7 +996,13 @@ function onDocKeydown(e) {
 
 async function loadSettings() {
   if (props.guestMode) {
-    // Gast: Pick-UI vom Share-Override steuern
+    // Gast: Bewertungsarten vom Share-Override steuern
+    if (props.enableRatingOverride != null) {
+      settings.value.enable_rating_ui = props.enableRatingOverride
+    }
+    if (props.enableColorOverride != null) {
+      settings.value.enable_color_ui = props.enableColorOverride
+    }
     if (props.enablePickOverride != null) {
       settings.value.enable_pick_ui = props.enablePickOverride
     }

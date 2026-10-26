@@ -51,10 +51,14 @@ class UserSettingsTest extends TestCase
         $this->assertTrue($result['show_rating_overlay']);
         $this->assertTrue($result['show_color_overlay']);
         $this->assertSame('auto', $result['grid_columns']);
+        $this->assertTrue($result['enable_rating_ui']);
+        $this->assertTrue($result['enable_color_ui']);
         $this->assertFalse($result['enable_pick_ui']);
         // RAWs sind opt-in (RAW+JPEG-Ordner zeigten sonst jedes Bild doppelt)
         $this->assertFalse($result['show_raw']);
         $this->assertTrue($result['write_raw_sidecar']);
+        // TIFF bleibt standardmäßig sichtbar (Bestandsverhalten)
+        $this->assertTrue($result['show_tiff']);
     }
 
     public function testGetSettingsReturnsStoredValues(): void
@@ -172,6 +176,25 @@ class UserSettingsTest extends TestCase
 
         $this->assertSame('1', $saved['show_filename']);
         $this->assertSame('0', $saved['show_rating_overlay']);
+    }
+
+    public function testSaveSettingsStoresRatingTypesAndTiff(): void
+    {
+        $saved = [];
+        $this->config->method('setUserValue')
+            ->willReturnCallback(function ($uid, $app, $key, $val) use (&$saved) {
+                $saved[$key] = $val;
+            });
+
+        $this->settings->saveSettings(self::USER_ID, [
+            'enable_rating_ui' => false,
+            'enable_color_ui'  => true,
+            'show_tiff'        => false,
+        ]);
+
+        $this->assertSame('0', $saved['enable_rating_ui']);
+        $this->assertSame('1', $saved['enable_color_ui']);
+        $this->assertSame('0', $saved['show_tiff']);
     }
 
     public function testSaveSettingsMultipleKeysAtOnce(): void
