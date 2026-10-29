@@ -1150,6 +1150,9 @@ watch(() => route.query, q => {
   flex-shrink: 0;
   max-height: 30vh;
   overflow-y: auto;
+  /* overflow-y: auto zieht sonst overflow-x: auto nach — überlange Ordnernamen
+     werden wie bisher abgeschnitten statt seitlich zu scrollen */
+  overflow-x: hidden;
   /* Scrollbar dunkel und schmal statt Browser-Standard; Thumb heller als im
      FolderPopover, damit die Leiste als scrollbar erkennbar bleibt */
   scrollbar-width: thin;
