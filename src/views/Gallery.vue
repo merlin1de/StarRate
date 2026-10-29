@@ -1145,6 +1145,11 @@ watch(() => route.query, q => {
   gap: 4px;
   padding: 4px 8px;
   width: 100%;
+  /* Viele Unterordner dürfen Filterleiste + Grid nicht aus dem Bild schieben
+     (.sr-app hat overflow: hidden) — Pills scrollen stattdessen selbst. */
+  flex-shrink: 0;
+  max-height: 30vh;
+  overflow-y: auto;
 }
 
 .sr-folders__item {
