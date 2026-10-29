@@ -471,6 +471,43 @@ describe('FilterBar – Scroll-Hint', () => {
     expect(el.scrollTo).toHaveBeenCalledWith({ left: 500, behavior: 'smooth' })
   })
 
+  it('Pfeil per Tastatur: Fokus wandert aufs letzte Element der Zeile', async () => {
+    const w = mount(FilterBar, {
+      attachTo: document.body,
+      props: { filter: defaultFilter(), total: 100, filteredCount: 100, mode: 'grid', allowShare: true, allowExport: true, canExport: true },
+    })
+    const el = filtersOf(w).element
+    setDims(el, { scrollWidth: 500, clientWidth: 300 })
+    el.scrollTo = vi.fn()
+    await flushPromises()
+    const arrow = w.find('.sr-filterbar__scroll-more')
+    arrow.element.focus()
+    arrow.element.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }))
+    await flushPromises()
+    const buttons = el.querySelectorAll('button:not([disabled]), select:not([disabled])')
+    expect(document.activeElement).toBe(buttons[buttons.length - 1])
+    expect(document.activeElement.textContent).toContain('Export')
+    w.unmount()
+  })
+
+  it('Pfeil per Tap: Fokus bleibt unverändert', async () => {
+    const w = mount(FilterBar, {
+      attachTo: document.body,
+      props: { filter: defaultFilter(), total: 100, filteredCount: 100, mode: 'grid', allowShare: true, allowExport: true, canExport: true },
+    })
+    const el = filtersOf(w).element
+    setDims(el, { scrollWidth: 500, clientWidth: 300 })
+    el.scrollTo = vi.fn()
+    await flushPromises()
+    const arrow = w.find('.sr-filterbar__scroll-more')
+    arrow.element.focus()
+    arrow.element.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await flushPromises()
+    expect(el.scrollTo).toHaveBeenCalled()
+    expect(document.activeElement).toBe(arrow.element)
+    w.unmount()
+  })
+
   it('Pfeil-Klick setzt scrollLeft, wenn scrollTo fehlt', async () => {
     const w = factory()
     const el = filtersOf(w).element

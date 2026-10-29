@@ -366,13 +366,21 @@ function updateScrollHint() {
   canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - SCROLL_EPSILON
 }
 
-function scrollToEnd() {
+function scrollToEnd(event) {
   const el = filtersEl.value
   if (!el) return
   if (typeof el.scrollTo === 'function') {
     el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' })
   } else {
     el.scrollLeft = el.scrollWidth
+  }
+  // Per Tastatur ausgelöst (Enter/Leertaste → click.detail === 0): der Pfeil
+  // verschwindet gleich per v-if und der Fokus fiele auf <body> zurück — also
+  // aufs letzte bedienbare Element der Zeile setzen. Bei Taps nicht, sonst
+  // klebt auf Touch ein Fokus-Zustand am Export-Button.
+  if (event?.detail === 0) {
+    const items = el.querySelectorAll('button:not([disabled]), select:not([disabled])')
+    items[items.length - 1]?.focus({ preventScroll: true })
   }
 }
 
