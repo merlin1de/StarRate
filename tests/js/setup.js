@@ -30,12 +30,13 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
-// ResizeObserver mock
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe:   vi.fn(),
-  unobserve: vi.fn(),
-  disconnect:vi.fn(),
-}))
+// ResizeObserver mock — als Klasse statt vi.fn(), damit vi.resetAllMocks()
+// (z.B. in Gallery.spec) die Implementierung nicht wegnimmt.
+global.ResizeObserver = class {
+  observe()    {}
+  unobserve()  {}
+  disconnect() {}
+}
 
 // IntersectionObserver mock
 global.IntersectionObserver = vi.fn().mockImplementation(() => ({
