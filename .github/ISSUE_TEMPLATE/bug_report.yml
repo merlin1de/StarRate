@@ -1,44 +1,56 @@
 name: Bug report
-description: Something doesn't work as expected
+description: Something in StarRate doesn't work the way it should
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time! The versions below help a lot — many issues only show up on a specific Nextcloud release.
-        You'll find them under **Administration settings → Overview** (Nextcloud, PHP) and **Apps → Your apps** (StarRate), or via `occ app:list | grep starrate`.
+        Thanks for taking the time. Write in **English or German**, whichever suits you.
+
+        The questions below are the ones that decide whether a bug can be reproduced.
+        If you don't know an answer, leave it — a report with gaps still beats no report.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: And what did you expect instead?
+      placeholder: |
+        I rated 40 photos with 3 stars in the grid. After a reload, about 10 of them were unrated again.
+        Expected: all of them keep three stars.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to get there
+      description: The shortest path you know of that shows the problem.
+      placeholder: |
+        1. Open a folder with ~300 JPEGs
+        2. Ctrl+A
+        3. Press 3
+        4. Reload the page
+    validations:
+      required: true
 
   - type: input
     id: starrate-version
     attributes:
       label: StarRate version
-      placeholder: "e.g. 1.4.0 (nightly)"
+      description: "**Apps → Your apps** shows it, or `occ app:list | grep starrate`."
+      placeholder: "1.4.0 (nightly)"
     validations:
       required: true
 
   - type: input
     id: nextcloud-version
     attributes:
-      label: Nextcloud version
-      placeholder: "e.g. 33.0.1"
+      label: Nextcloud and PHP version
+      description: "**Administration settings → Overview** shows the Nextcloud version, **System** the PHP version."
+      placeholder: "Nextcloud 33.0.1, PHP 8.3"
     validations:
       required: true
-
-  - type: input
-    id: php-version
-    attributes:
-      label: PHP version
-      placeholder: "e.g. 8.3"
-
-  - type: dropdown
-    id: install
-    attributes:
-      label: How did you install StarRate?
-      options:
-        - App Store (stable)
-        - App Store (nightly / --allow-unstable)
-        - GitHub release tarball
-        - From source (git)
 
   - type: dropdown
     id: area
@@ -46,42 +58,56 @@ body:
       label: Where does it happen?
       multiple: true
       options:
-        - Grid / filters
+        - Grid and filters
         - Loupe
-        - Guest share link
-        - Camera RAW
-        - XMP metadata (reading or writing)
+        - Guest link
         - Settings
         - Mobile browser
         - Android app
-        - Other
+        - Somewhere else
+
+  - type: dropdown
+    id: storage
+    attributes:
+      label: Where do the images live?
+      description: Many file-access problems only show up on one kind of storage.
+      options:
+        - Normal Nextcloud storage
+        - External storage (SMB, local, S3 …)
+        - Group folder (Team folder)
+        - Shared with me by another user
+        - Mixed / don't know
+
+  - type: input
+    id: files
+    attributes:
+      label: Which files does it happen with?
+      description: File format and camera, if the problem is tied to particular pictures. For camera RAWs, also say whether the *Camera RAW Previews* app is installed.
+      placeholder: "Sony A7 III, ARW — JPEGs from the same folder are fine"
 
   - type: input
     id: client
     attributes:
       label: Browser and device
-      placeholder: "e.g. Firefox 140 on Windows, Brave on Android"
+      placeholder: "Firefox on Windows, Brave on Android"
 
   - type: textarea
-    id: what-happened
+    id: extra
     attributes:
-      label: What happened?
-      description: What did you expect, and what happened instead? Screenshots are very welcome.
-    validations:
-      required: true
+      label: Screenshot or anything else
+      description: |
+        Drop images straight into this field.
 
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to reproduce
-      placeholder: |
-        1. Open folder …
-        2. Press …
-        3. …
+        If Nextcloud logged an error, the entries around the time it happened help a lot:
+        **Administration settings → Logging**, or `data/nextcloud.log` (search for "starrate").
+        Please skim them first — they contain user, folder and file names.
 
-  - type: textarea
-    id: logs
+  - type: checkboxes
+    id: checks
     attributes:
-      label: Log output
-      description: Relevant entries from **Administration settings → Logging** or `data/nextcloud.log` (search for "starrate"). Please remove anything private.
-      render: shell
+      label: Before you send
+      options:
+        - label: I'm on the current version of StarRate
+          required: false
+        - label: I searched the existing issues
+          required: false

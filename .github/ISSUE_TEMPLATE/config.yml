@@ -1,5 +1,14 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
-  - name: Recursive folder view — how it works
+  - name: README
+    url: https://github.com/merlin1de/starrate#readme
+    about: Features, settings, keyboard shortcuts, camera RAW — the README answers most of it.
+  - name: Recursive folder view
     url: https://github.com/merlin1de/starrate/blob/master/docs/recursive-folders.en.md
-    about: Opt-in, limits and performance notes — worth a look before reporting an empty recursive view.
+    about: Opt-in, limits and performance — worth a look if the recursive view stays empty or slow.
+  - name: Workflow guide
+    url: https://whitespace.de/en/artikel/nextcloud-foto-workflow/
+    about: Nextcloud as a photo home — where StarRate fits in, and what is still missing.
+  - name: Workflow-Guide (deutsch)
+    url: https://whitespace.de/de/artikel/nextcloud-foto-workflow/
+    about: Derselbe Guide auf Deutsch.

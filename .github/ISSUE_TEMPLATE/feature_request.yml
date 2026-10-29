@@ -1,35 +1,42 @@
 name: Feature request
-description: Suggest an idea or improvement
+description: An idea for something StarRate should do
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Ideas are welcome! StarRate deliberately stays focused: fast rating and culling of the photos in a folder, with ratings that travel to Lightroom & Co. via XMP. Describing *how you work* helps us find the fix that fits that focus — often there's a smaller change that solves the same problem.
+        Write in **English or German**, whichever suits you.
+
+        The most useful requests describe the *situation*, not the solution — what you
+        were doing when you wished for it. That often leads somewhere better than the
+        feature as first imagined.
 
   - type: textarea
     id: problem
     attributes:
       label: What are you trying to do?
-      description: Your workflow and where StarRate gets in the way today.
-      placeholder: "e.g. After a shoot I upload ~800 RAW+JPEG pairs and send a guest link to the client. Then …"
+      description: The moment in your workflow where StarRate gets in the way.
+      placeholder: |
+        After a shoot I send the client a guest link with 600 photos. They pick their
+        favorites, and then I have to find those again in Lightroom by hand.
     validations:
       required: true
 
   - type: textarea
-    id: solution
+    id: idea
     attributes:
       label: What would help?
-      description: How you imagine it — mockups and screenshots are welcome.
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Workarounds or other tools
-      description: What do you do today instead? How do other tools (Lightroom, digiKam, darktable, …) handle it?
+      description: If you already have a shape in mind, describe it — mockups are welcome. If not, that's fine too.
 
   - type: input
-    id: versions
+    id: workflow
     attributes:
-      label: StarRate and Nextcloud version
-      placeholder: "e.g. StarRate 1.4.0, Nextcloud 33.0.1"
+      label: What do you shoot, and who rates?
+      description: Helps to judge how common the situation is.
+      placeholder: "Weddings, RAW+JPEG, I cull first and the couple picks via guest link"
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you handle it today?
+      description: Another program, a workaround, or simply not at all.
