@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an idea or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome! StarRate deliberately stays focused: fast rating and culling of the photos in a folder, with ratings that travel to Lightroom & Co. via XMP. Describing *how you work* helps us find the fix that fits that focus — often there's a smaller change that solves the same problem.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Your workflow and where StarRate gets in the way today.
+      placeholder: "e.g. After a shoot I upload ~800 RAW+JPEG pairs and send a guest link to the client. Then …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would help?
+      description: How you imagine it — mockups and screenshots are welcome.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds or other tools
+      description: What do you do today instead? How do other tools (Lightroom, digiKam, darktable, …) handle it?
+
+  - type: input
+    id: versions
+    attributes:
+      label: StarRate and Nextcloud version
+      placeholder: "e.g. StarRate 1.4.0, Nextcloud 33.0.1"

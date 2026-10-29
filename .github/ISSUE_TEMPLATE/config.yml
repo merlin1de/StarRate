@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Recursive folder view — how it works
+    url: https://github.com/merlin1de/starrate/blob/master/docs/recursive-folders.en.md
+    about: Opt-in, limits and performance notes — worth a look before reporting an empty recursive view.

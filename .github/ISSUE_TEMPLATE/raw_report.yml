@@ -1,0 +1,80 @@
+name: Camera RAW report
+description: Tell us how StarRate handles the RAW files from your camera — "works fine" reports help too
+title: "RAW: <camera model> (<format>)"
+labels: ["raw"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        StarRate shows the preview JPEG the camera embeds in the RAW file. Every manufacturer (and sometimes every camera generation) stores it a little differently, so reports from real cameras are the best test we can get — **including ones where everything just works.**
+
+        RAW support is opt-in: **Personal settings → StarRate → Show camera RAWs**.
+
+  - type: input
+    id: camera
+    attributes:
+      label: Camera make and model
+      placeholder: "e.g. Canon EOS R6 Mark II"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: RAW format
+      options:
+        - NEF (Nikon)
+        - CR2 (Canon)
+        - CR3 (Canon)
+        - ARW (Sony)
+        - DNG
+        - ORF (Olympus / OM System)
+        - RW2 (Panasonic)
+        - RAF (Fujifilm)
+        - PEF (Pentax)
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: works
+    attributes:
+      label: What works?
+      description: Tick everything that looks right.
+      options:
+        - label: Thumbnail shows up in the grid
+        - label: Preview in the loupe is sharp enough to judge focus
+        - label: Orientation is correct (portrait shots are upright)
+        - label: Rating/label lands in the XMP sidecar next to the RAW (not for DNG)
+        - label: Lightroom / darktable / digiKam picks up the rating from the sidecar
+        - label: Sidecar follows the RAW when renaming, moving or deleting it in Files
+
+  - type: input
+    id: other-tool
+    attributes:
+      label: Which tool did you read the sidecar with?
+      placeholder: "e.g. Lightroom Classic 14, darktable 5.2"
+
+  - type: textarea
+    id: details
+    attributes:
+      label: What went wrong (if anything)?
+      description: Screenshots help. If a preview is missing or wrong, a link to a sample file is gold — e.g. from [raw.pixls.us](https://raw.pixls.us) or a file you're happy to share.
+
+  - type: input
+    id: versions
+    attributes:
+      label: StarRate and Nextcloud version
+      placeholder: "e.g. StarRate 1.4.0 (nightly), Nextcloud 33.0.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: crp
+    attributes:
+      label: Is the "Camera RAW Previews" app installed?
+      description: If it's enabled, StarRate uses its previews instead of its own.
+      options:
+        - "No"
+        - "Yes"
+        - Don't know

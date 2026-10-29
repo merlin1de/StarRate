@@ -1,0 +1,87 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time! The versions below help a lot — many issues only show up on a specific Nextcloud release.
+        You'll find them under **Administration settings → Overview** (Nextcloud, PHP) and **Apps → Your apps** (StarRate), or via `occ app:list | grep starrate`.
+
+  - type: input
+    id: starrate-version
+    attributes:
+      label: StarRate version
+      placeholder: "e.g. 1.4.0 (nightly)"
+    validations:
+      required: true
+
+  - type: input
+    id: nextcloud-version
+    attributes:
+      label: Nextcloud version
+      placeholder: "e.g. 33.0.1"
+    validations:
+      required: true
+
+  - type: input
+    id: php-version
+    attributes:
+      label: PHP version
+      placeholder: "e.g. 8.3"
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install StarRate?
+      options:
+        - App Store (stable)
+        - App Store (nightly / --allow-unstable)
+        - GitHub release tarball
+        - From source (git)
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      multiple: true
+      options:
+        - Grid / filters
+        - Loupe
+        - Guest share link
+        - Camera RAW
+        - XMP metadata (reading or writing)
+        - Settings
+        - Mobile browser
+        - Android app
+        - Other
+
+  - type: input
+    id: client
+    attributes:
+      label: Browser and device
+      placeholder: "e.g. Firefox 140 on Windows, Brave on Android"
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Screenshots are very welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open folder …
+        2. Press …
+        3. …
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: Relevant entries from **Administration settings → Logging** or `data/nextcloud.log` (search for "starrate"). Please remove anything private.
+      render: shell
