@@ -1,7 +1,15 @@
 <template>
   <div class="sr-filterbar">
-    <!-- Linke Seite: Filter -->
-    <div ref="filtersEl" class="sr-filterbar__filters" role="toolbar" :aria-label="t('starrate', 'Bildfilter')">
+    <!-- Linke Seite: Filter. Der Wrapper hält Fade + Pfeil fest am rechten
+         Rand, während die Filter-Zeile darunter (Mobile) horizontal scrollt. -->
+    <div class="sr-filterbar__filters-wrap">
+    <div
+      ref="filtersEl"
+      class="sr-filterbar__filters"
+      role="toolbar"
+      :aria-label="t('starrate', 'Bildfilter')"
+      @scroll.passive="updateScrollHint"
+    >
       <!-- Trichter-Icon -->
       <svg class="sr-filterbar__funnel" :class="{ 'sr-filterbar__funnel--active': hasActiveFilter }" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M3 4h18l-7 8v6l-4 2V12L3 4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
@@ -115,6 +123,24 @@
       </div>
 
     </div>
+
+    <!-- Mobile: Fade + Pfeil, solange rechts noch etwas kommt. Fade lässt Taps
+         durch (pointer-events: none), der Pfeil scrollt ans Ende. -->
+    <template v-if="canScrollRight">
+      <div class="sr-filterbar__scroll-fade" aria-hidden="true" />
+      <button
+        class="sr-filterbar__scroll-more"
+        type="button"
+        :aria-label="t('starrate', 'Weitere Filter anzeigen')"
+        :title="t('starrate', 'Weitere Filter anzeigen')"
+        @click="scrollToEnd"
+      >
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polyline points="9 6 15 12 9 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </template>
+    </div><!-- /.sr-filterbar__filters-wrap -->
 
     <!-- Rechte Seite: Count + Reset + Actions + Modus -->
     <div class="sr-filterbar__right">
@@ -253,7 +279,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { t, n } from '@nextcloud/l10n'
 
 const COLOR_OPTIONS = [
@@ -325,28 +351,54 @@ const colorOptions = COLOR_OPTIONS
 const selectedOp = ref('≥')
 const filtersEl  = ref(null)
 
-// Scroll-Hint auf Mobile: einmal pro Session kurz nach rechts wippen, damit
-// erkennbar wird, dass die Filter-Zeile horizontal scrollbar ist.
-onMounted(async () => {
-  await nextTick()
+// Scroll-Hint auf Mobile (#101): Fade + Pfeil am rechten Rand, solange die
+// Filter-Zeile rechts noch Inhalt hat. Auf Desktop bricht die Zeile um, dort
+// gibt es nichts zu scrollen und der Hint bleibt aus.
+const canScrollRight = ref(false)
+const SCROLL_EPSILON = 4 // Subpixel-Rundung, sonst flackert der Pfeil am Ende
+
+function updateScrollHint() {
+  const el = filtersEl.value
+  if (!el) {
+    canScrollRight.value = false
+    return
+  }
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - SCROLL_EPSILON
+}
+
+function scrollToEnd() {
   const el = filtersEl.value
   if (!el) return
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
-  let mq
-  try { mq = window.matchMedia('(max-width: 640px)') } catch { return }
-  if (!mq || !mq.matches) return
-  if (el.scrollWidth <= el.clientWidth + 4) return
-  try {
-    if (sessionStorage.getItem('sr-filterbar-hint')) return
-    sessionStorage.setItem('sr-filterbar-hint', '1')
-  } catch { /* sessionStorage evtl. blockiert */ }
+  if (typeof el.scrollTo === 'function') {
+    el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' })
+  } else {
+    el.scrollLeft = el.scrollWidth
+  }
+}
 
-  // Sanft anschubsen und zurück — nicht zu grell
-  const steps = [8, 16, 8, 0]
-  steps.forEach((x, i) => setTimeout(() => {
-    el.scrollTo({ left: x, behavior: 'smooth' })
-  }, 400 + i * 220))
+let resizeObserver = null
+
+onMounted(async () => {
+  await nextTick()
+  updateScrollHint()
+  if (typeof ResizeObserver === 'function' && filtersEl.value) {
+    resizeObserver = new ResizeObserver(updateScrollHint)
+    resizeObserver.observe(filtersEl.value)
+  }
 })
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
+
+// Inhalt der Zeile ändert sich (Reset-Button, Pick-UI, Teilen/Export) —
+// ResizeObserver sieht nur die Box, nicht die scrollWidth, also nachmessen.
+watch(
+  () => [props.filter, props.enablePickUi, props.allowShare, props.allowExport],
+  () => nextTick(updateScrollHint),
+  { deep: true },
+)
 
 // selectedOp mit eingehendem Filter synchronisieren (z.B. aus localStorage)
 watch(() => props.filter, (f) => {
@@ -458,12 +510,69 @@ function updateFilter(newFilter) {
   min-height: 46px;
 }
 
+.sr-filterbar__filters-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
 .sr-filterbar__filters {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   flex: 1;
+}
+
+/* ── Mobile Scroll-Hint: Fade + Pfeil am rechten Rand (#101) ──────────────── */
+.sr-filterbar__scroll-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 48px;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(18, 18, 42, 0), #12122a 70%);
+}
+
+.sr-filterbar__scroll-more {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #e0e0e0;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.sr-filterbar__scroll-more svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sr-filterbar__scroll-more:focus,
+.sr-filterbar__scroll-more:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 641px) {
+  .sr-filterbar__scroll-fade,
+  .sr-filterbar__scroll-more { display: none; }
 }
 
 .sr-filterbar__group {
@@ -932,7 +1041,11 @@ function updateFilter(newFilter) {
     gap: 4px;
     min-height: 0;
   }
+  .sr-filterbar__filters-wrap {
+    min-width: 0;
+  }
   .sr-filterbar__filters {
+    min-width: 0;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;

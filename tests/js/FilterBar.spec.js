@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import FilterBar from '../../src/components/FilterBar.vue'
 
 const defaultFilter = () => ({
@@ -386,5 +386,143 @@ describe('FilterBar', () => {
     const w = factory({ canDownload: true, selectedCount: 3 })
     await w.find('.sr-filterbar__action--download').trigger('click')
     expect(w.emitted('download-zip')).toBeTruthy()
+  })
+})
+
+// ── Mobile Scroll-Hint: Fade + Pfeil (#101) ──────────────────────────────────
+
+describe('FilterBar – Scroll-Hint', () => {
+  const originalRO = global.ResizeObserver
+  let roInstances
+
+  beforeEach(() => {
+    roInstances = []
+    global.ResizeObserver = vi.fn().mockImplementation((cb) => {
+      const inst = { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn(), cb }
+      roInstances.push(inst)
+      return inst
+    })
+  })
+
+  afterEach(() => {
+    global.ResizeObserver = originalRO
+  })
+
+  // jsdom layoutet nicht — Maße der Scroll-Zeile von Hand setzen
+  const setDims = (el, { scrollWidth, clientWidth, scrollLeft = 0 }) => {
+    Object.defineProperty(el, 'scrollWidth', { configurable: true, value: scrollWidth })
+    Object.defineProperty(el, 'clientWidth', { configurable: true, value: clientWidth })
+    Object.defineProperty(el, 'scrollLeft',  { configurable: true, writable: true, value: scrollLeft })
+  }
+  const filtersOf = (w) => w.find('.sr-filterbar__filters')
+  const hasArrow  = (w) => w.find('.sr-filterbar__scroll-more').exists()
+
+  it('zeigt keinen Pfeil, wenn alles in die Zeile passt', async () => {
+    const w = factory()
+    await flushPromises()
+    expect(hasArrow(w)).toBe(false)
+    expect(w.find('.sr-filterbar__scroll-fade').exists()).toBe(false)
+  })
+
+  it('zeigt Pfeil + Fade direkt nach dem Mounten, wenn rechts noch Inhalt ist', async () => {
+    const w = factory()
+    setDims(filtersOf(w).element, { scrollWidth: 500, clientWidth: 300 })
+    await flushPromises()
+    expect(hasArrow(w)).toBe(true)
+    const fade = w.find('.sr-filterbar__scroll-fade')
+    expect(fade.exists()).toBe(true)
+    expect(fade.attributes('aria-hidden')).toBe('true')
+    expect(w.find('.sr-filterbar__scroll-more').attributes('aria-label')).toBeTruthy()
+  })
+
+  it('blendet den Pfeil am Ende der Zeile aus und beim Zurückscrollen wieder ein', async () => {
+    const w = factory()
+    await flushPromises()
+    const el = filtersOf(w).element
+
+    setDims(el, { scrollWidth: 500, clientWidth: 300, scrollLeft: 0 })
+    await filtersOf(w).trigger('scroll')
+    expect(hasArrow(w)).toBe(true)
+
+    el.scrollLeft = 200
+    await filtersOf(w).trigger('scroll')
+    expect(hasArrow(w)).toBe(false)
+
+    el.scrollLeft = 50
+    await filtersOf(w).trigger('scroll')
+    expect(hasArrow(w)).toBe(true)
+  })
+
+  it('ignoriert Subpixel-Reste am Ende (kein Flackern)', async () => {
+    const w = factory()
+    await flushPromises()
+    setDims(filtersOf(w).element, { scrollWidth: 500, clientWidth: 300, scrollLeft: 197 })
+    await filtersOf(w).trigger('scroll')
+    expect(hasArrow(w)).toBe(false)
+  })
+
+  it('Pfeil-Klick scrollt sanft ans Ende', async () => {
+    const w = factory()
+    const el = filtersOf(w).element
+    setDims(el, { scrollWidth: 500, clientWidth: 300 })
+    el.scrollTo = vi.fn()
+    await flushPromises()
+    await w.find('.sr-filterbar__scroll-more').trigger('click')
+    expect(el.scrollTo).toHaveBeenCalledWith({ left: 500, behavior: 'smooth' })
+  })
+
+  it('Pfeil-Klick setzt scrollLeft, wenn scrollTo fehlt', async () => {
+    const w = factory()
+    const el = filtersOf(w).element
+    setDims(el, { scrollWidth: 500, clientWidth: 300 })
+    el.scrollTo = undefined
+    await flushPromises()
+    await w.find('.sr-filterbar__scroll-more').trigger('click')
+    expect(el.scrollLeft).toBe(500)
+  })
+
+  it('misst bei Größenänderung neu (ResizeObserver) und trennt beim Unmount', async () => {
+    const w = factory()
+    await flushPromises()
+    expect(roInstances).toHaveLength(1)
+    const ro = roInstances[0]
+    expect(ro.observe).toHaveBeenCalledWith(filtersOf(w).element)
+    expect(hasArrow(w)).toBe(false)
+
+    setDims(filtersOf(w).element, { scrollWidth: 500, clientWidth: 300 })
+    ro.cb()
+    await w.vm.$nextTick()
+    expect(hasArrow(w)).toBe(true)
+
+    w.unmount()
+    expect(ro.disconnect).toHaveBeenCalled()
+  })
+
+  it('funktioniert ohne ResizeObserver', async () => {
+    global.ResizeObserver = undefined
+    const w = factory()
+    setDims(filtersOf(w).element, { scrollWidth: 500, clientWidth: 300 })
+    await flushPromises()
+    expect(hasArrow(w)).toBe(true)
+    expect(() => w.unmount()).not.toThrow()
+  })
+
+  it('misst neu, wenn sich der Zeilen-Inhalt ändert (Props)', async () => {
+    const w = factory()
+    await flushPromises()
+    expect(hasArrow(w)).toBe(false)
+    setDims(filtersOf(w).element, { scrollWidth: 500, clientWidth: 300 })
+    await w.setProps({ filter: { ...defaultFilter(), minRating: 3 } })
+    await flushPromises()
+    expect(hasArrow(w)).toBe(true)
+  })
+
+  it('schreibt keinen Session-Hint mehr (Wippen entfernt)', async () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem')
+    const w = factory()
+    setDims(filtersOf(w).element, { scrollWidth: 500, clientWidth: 300 })
+    await flushPromises()
+    expect(spy).not.toHaveBeenCalledWith('sr-filterbar-hint', expect.anything())
+    spy.mockRestore()
   })
 })
