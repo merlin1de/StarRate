@@ -1150,7 +1150,14 @@ watch(() => route.query, q => {
   flex-shrink: 0;
   max-height: 30vh;
   overflow-y: auto;
+  /* Scrollbar dunkel und schmal statt Browser-Standard; Thumb heller als im
+     FolderPopover, damit die Leiste als scrollbar erkennbar bleibt */
+  scrollbar-width: thin;
+  scrollbar-color: #4a4a6a transparent;
 }
+
+.sr-folders::-webkit-scrollbar { width: 6px; }
+.sr-folders::-webkit-scrollbar-thumb { background: #4a4a6a; border-radius: 3px; }
 
 .sr-folders__item {
   display: flex;
