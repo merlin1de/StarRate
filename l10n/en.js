@@ -35,6 +35,7 @@ OC.L10N.register(
 
         // ── Filter ────────────────────────────────────────────────────────────
         "Bildfilter" : "Image filters",
+        "Weitere Filter anzeigen" : "Show more filters",
         "Sterne" : "Stars",
         "Farben" : "Colors",
         "Auswahl" : "Selection",
