@@ -427,6 +427,70 @@ body#body-public .guest-box {
   outline: none !important;
 }
 
+/* ── FilterBar: Fokus der übrigen Buttons + Tastatur-Fokus ────────────────── */
+/* NC-Core färbt fokussierte Buttons ein (heller Hintergrund, dunkler Rahmen)  */
+/* und legt bei Tastatur-Fokus einen weiß/schwarzen Doppelring an — im dunklen */
+/* Theme ein heller Block mit unlesbarer Schrift (z. B. „Export“).             */
+/* :focus (auch nach Klick/Tap) lässt den Ruhe-Look stehen; :focus-visible     */
+/* (Tastatur) zeigt den Hover-Look plus den App-Fokusring (--sr-accent).       */
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar__action:focus {
+  background: #2a2a3e !important;
+  border-color: #3f3f5a !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar__mode-btn:not(.sr-filterbar__mode-btn--active):focus,
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar__scroll-more:focus {
+  background: transparent !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar__reset:not(.sr-filterbar__reset--mobile):focus {
+  background: transparent !important;
+  border-color: #7a3050 !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar__reset--mobile:focus {
+  background: #7a3050 !important;
+}
+
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar :is(
+  .sr-filterbar__op, .sr-filterbar__pill, .sr-filterbar__colordot, .sr-filterbar__reset,
+  .sr-filterbar__mode-btn, .sr-filterbar__action, .sr-filterbar__scroll-more
+):focus-visible {
+  outline: 2px solid var(--sr-accent) !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+/* Operatoren und Umschalter sitzen in Gruppen mit overflow: hidden — Ring nach innen */
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar :is(.sr-filterbar__op, .sr-filterbar__mode-btn):focus-visible {
+  outline-offset: -3px;
+}
+/* Rekursiv-Toggle ist höher als sein Cluster (NC-Mindesthöhe) — Ring um den Cluster */
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar .sr-filterbar__recursive .sr-filterbar__mode-btn:focus-visible {
+  outline: none !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar .sr-filterbar__recursive:has(.sr-filterbar__mode-btn:focus-visible) {
+  outline: 2px solid var(--sr-accent);
+  outline-offset: 2px;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar :is(.sr-filterbar__op, .sr-filterbar__mode-btn):not(.sr-filterbar__op--active, .sr-filterbar__mode-btn--active):focus-visible {
+  background: #2a2a4a !important;
+  color: #aaa !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar .sr-filterbar__pill:not(.sr-filterbar__pill--active):focus-visible {
+  background: #2a2a4a !important;
+  color: #ddd !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar .sr-filterbar__reset:not(.sr-filterbar__reset--mobile):focus-visible {
+  background: #3a2030 !important;
+  border-color: #9a4060 !important;
+  color: #e0a0b0 !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar .sr-filterbar__action:focus-visible {
+  background: #32323e !important;
+  border-color: #7a3050 !important;
+  color: #d4d4d8 !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-filterbar .sr-filterbar__colordot--active:focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,0.5) !important;
+}
+
 /* ── Komponenten-Buttons: NC-Override mit :is(#starrate-root, #starrate-guest-root) Präfix ───────────── */
 /* NC-Selektoren wie "#app-content button" haben Spezifizität (1,0,1).         */
 /* Mit :is(#starrate-root, #starrate-guest-root) Klassen-Präfix haben wir (1,1,0) – das schlägt NC.       */
