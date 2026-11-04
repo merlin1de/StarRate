@@ -9,6 +9,8 @@
     <description lang="en"><![CDATA[
 StarRate is a professional photo rating and culling tool for photographers, seamlessly integrated into Nextcloud.
 
+▶ **Watch the 1-minute demo:** https://www.youtube.com/watch?v=ziOHtoiHQ5g
+
 Rate photos with 1–5 stars and color labels, flag picks and rejects with keyboard shortcuts, and share a guest gallery link with your client or model. They pick their favorites in the browser — no Nextcloud account required. Leave comments on individual images for feedback rounds, and export the final rating list as CSV when you're done.
 
 **Ratings are written as XMP metadata directly into the JPEG file.** Open it in Lightroom Classic, digiKam, F-Stop or Darktable — the stars are already there. No re-export, no sidecar files. **Shooting RAW?** Turn on camera RAWs and rate NEF, CR3 & Co. right in the grid — StarRate shows the preview the camera embeds and keeps the ratings in a Lightroom-style XMP sidecar, the RAW itself stays untouched. **Coming from Lightroom?** Import your existing XMP ratings with one `occ` command — your years of curation travel with you.
@@ -42,6 +44,8 @@ Rate photos with 1–5 stars and color labels, flag picks and rejects with keybo
 
     <description lang="de"><![CDATA[
 StarRate ist ein professionelles Foto-Bewertungs- und Auswahlwerkzeug für Fotografen, nahtlos in Nextcloud integriert.
+
+▶ **Demo-Video (1 Minute):** https://www.youtube.com/watch?v=RLzoTOsfbWo
 
 Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastaturkürzel markieren, und einen Gast-Link an Kunden oder Models schicken. Die wählen ihre Favoriten im Browser — ohne Nextcloud-Account. Kommentare zu einzelnen Bildern für Feedback-Runden hinterlassen, und die fertige Bewertungsliste am Ende als CSV exportieren.
 
@@ -89,6 +93,8 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
     <website>https://github.com/merlin1de/starrate</website>
     <bugs>https://github.com/merlin1de/starrate/issues</bugs>
     <repository type="git">https://github.com/merlin1de/starrate</repository>
+
+    <video>https://www.youtube.com/watch?v=ziOHtoiHQ5g</video>
 
     <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-grid.jpg</screenshot>
     <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-loupe.jpg</screenshot>

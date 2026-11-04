@@ -8,6 +8,10 @@
 [![Nextcloud 33–35](https://img.shields.io/badge/Nextcloud-33–35-0082c9?logo=nextcloud)](https://apps.nextcloud.com/apps/starrate)
 [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net)
 
+[![StarRate in one minute - watch on YouTube](screenshots/starrate-video.jpg)](https://www.youtube.com/watch?v=ziOHtoiHQ5g)
+
+▶ **StarRate in one minute** — [watch on YouTube](https://www.youtube.com/watch?v=ziOHtoiHQ5g) · [Deutsche Fassung](https://www.youtube.com/watch?v=RLzoTOsfbWo)
+
 > 🌳 **New in v1.3** — Recursive folder view: browse a whole folder tree as one stream, optionally grouped by folder depth. → [How it works](docs/recursive-folders.en.md)
 
 > **The missing photo rating tool for Nextcloud photographers.**  
@@ -129,12 +133,9 @@ One shared XMP rating contract — multiple apps that read and write it.
 | Component                  | Status         | What it does                                                                                       |
 |----------------------------|----------------|----------------------------------------------------------------------------------------------------|
 | **StarRate for Nextcloud** | This repo      | Rate in your browser, share guest galleries, write XMP straight into the JPEG                      |
-| **StarRate for Android**   | Coming soon    | Native app with Nextcloud SSO and `starrate://` deep links for guest shares                        |
 | **[FlashView](https://flashview.net)** | In development | A lightning-fast Windows image viewer — opens folders instantly and tags the very same XMP that StarRate reads |
 
 The shared workflow: cull thousands of shots in FlashView on your desktop, sync the folder to Nextcloud, and send a guest link to your client. Photographer and client edit the same XMP metadata — every star, color label and pick stays in sync, no re-export needed.
-
-⭐ **Star this repo** to get notified when the Android beta launches.
 
 ---
 
