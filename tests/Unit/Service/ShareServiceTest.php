@@ -1352,4 +1352,65 @@ class ShareServiceTest extends TestCase
         $qb->method('executeQuery')->willReturn($result);
         return $qb;
     }
+
+    // ─── Nachricht an den Gast ────────────────────────────────────────────────
+
+    public function testCreateShareStoresNormalizedGuestMessage(): void
+    {
+        $this->secureRandom->method('generate')->willReturn(self::SAMPLE_TOKEN);
+        $this->config->method('getUserValue')->willReturn('{}');
+
+        $share = $this->service->createShare(
+            self::OWNER_ID, '/Fotos', null, null, 0, ShareService::PERM_VIEW,
+            guestMessage: "  Line one\r\nLine two\x07  ",
+        );
+
+        $this->assertSame("Line one\nLine two", $share['guest_message']);
+    }
+
+    public function testCreateShareTreatsBlankGuestMessageAsNone(): void
+    {
+        $this->secureRandom->method('generate')->willReturn(self::SAMPLE_TOKEN);
+        $this->config->method('getUserValue')->willReturn('{}');
+
+        $share = $this->service->createShare(
+            self::OWNER_ID, '/Fotos', null, null, 0, ShareService::PERM_VIEW,
+            guestMessage: "  \n ",
+        );
+
+        $this->assertNull($share['guest_message']);
+    }
+
+    public function testNormalizeGuestMessageKeepsMarkupAndEmojiAsTextAndLimitsLength(): void
+    {
+        // Klartext bleibt unverändert; Schutz vor HTML liegt beim Rendern als Text.
+        $this->assertSame('<b>hi</b> 👩‍💻', ShareService::normalizeGuestMessage('<b>hi</b> 👩‍💻'));
+
+        $long = str_repeat('ü', ShareService::GUEST_MESSAGE_MAX_LENGTH + 5);
+        $this->assertSame(
+            ShareService::GUEST_MESSAGE_MAX_LENGTH,
+            mb_strlen((string) ShareService::normalizeGuestMessage($long)),
+        );
+    }
+
+    public function testAppendMessageAckWritesEventWithoutFileId(): void
+    {
+        $saved = null;
+        $this->config->method('getUserValue')->willReturn('[]');
+        $this->config->method('setUserValue')
+            ->willReturnCallback(function ($u, $a, $k, $v) use (&$saved) { $saved = json_decode($v, true); });
+
+        $this->service->appendMessageAckToLog([
+            'token'         => self::SAMPLE_TOKEN,
+            'owner_id'      => self::OWNER_ID,
+            'guest_name'    => 'Anna',
+            'guest_message' => str_repeat('x', 500),
+        ]);
+
+        $this->assertSame('message_ack', $saved[0]['event']);
+        $this->assertSame('Anna', $saved[0]['guest_name']);
+        $this->assertSame(200, mb_strlen($saved[0]['message']));
+        // Ohne file_id überspringt foldGuestLog den Eintrag; die XMP-Heilung bleibt unberührt.
+        $this->assertArrayNotHasKey('file_id', $saved[0]);
+    }
 }

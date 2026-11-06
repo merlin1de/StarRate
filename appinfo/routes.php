@@ -144,6 +144,11 @@ return [
             'url'  => '/api/guest/{token}/verify',
             'verb' => 'POST',
         ],
+        [
+            'name' => 'share#guestAcknowledgeMessage',
+            'url'  => '/api/guest/{token}/message/ack',
+            'verb' => 'POST',
+        ],
 
         // ─── Kommentare (Owner) ───────────────────────────────────────────────
         [

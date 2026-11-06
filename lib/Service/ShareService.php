@@ -35,6 +35,10 @@ class ShareService
     // src/views/Gallery.vue übereinstimmen — bei Änderung beide anpassen.
     public const MAX_ZIP_FILES = 500;
 
+    // Maximallänge der Nachricht an den Gast. MUSS mit GUEST_MESSAGE_MAX in
+    // src/components/ShareModal.vue übereinstimmen — bei Änderung beide anpassen.
+    public const GUEST_MESSAGE_MAX_LENGTH = 1000;
+
     private const APP_ID               = 'starrate';
     private const CONFIG_SHARES        = 'starrate_shares';
     private const CONFIG_LOG           = 'starrate_guest_log';  // key: CONFIG_LOG_<token>
@@ -79,6 +83,7 @@ class ShareService
         bool    $recursive = false,
         int     $depth = 0,
         bool    $allowDownload = false,
+        ?string $guestMessage = null,
     ): array {
         $this->validatePermissions($permissions);
 
@@ -96,6 +101,7 @@ class ShareService
             'min_rating'    => max(0, min(5, $minRating)),
             'permissions'   => $permissions,
             'guest_name'    => $guestName ? trim($guestName) : null,
+            'guest_message' => self::normalizeGuestMessage($guestMessage),
             'allow_pick'    => $allowPick,
             'allow_export'  => $allowExport,
             'allow_comment' => $allowComment,
@@ -217,6 +223,10 @@ class ShareService
         if (isset($data['nc_path'])) {
             $all[$token]['nc_path'] = rtrim((string) $data['nc_path'], '/');
         }
+        // array_key_exists wie beim Passwort: explizites null entfernt die Nachricht.
+        if (array_key_exists('guest_message', $data)) {
+            $all[$token]['guest_message'] = self::normalizeGuestMessage($data['guest_message']);
+        }
 
         $this->saveShares($ownerId, $all);
 
@@ -248,6 +258,24 @@ class ShareService
     }
 
     // ─── Share-Validierung ────────────────────────────────────────────────────
+
+    /**
+     * Bereinigt die Nachricht an den Gast: einheitliche Zeilenumbrüche, keine
+     * Steuerzeichen, kein Rand-Whitespace, Längenlimit. Leer wird zu null.
+     *
+     * Bewusst kein HTML-Escaping: gespeichert wird Klartext, das Frontend rendert
+     * ihn per Text-Interpolation (nie v-html).
+     */
+    public static function normalizeGuestMessage(?string $message): ?string
+    {
+        if ($message === null) {
+            return null;
+        }
+        $message = str_replace(["\r\n", "\r"], "\n", $message);
+        $message = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $message) ?? '';
+        $message = mb_substr(trim($message), 0, self::GUEST_MESSAGE_MAX_LENGTH);
+        return $message === '' ? null : $message;
+    }
 
     public function isShareValid(array $share): bool
     {
@@ -725,6 +753,20 @@ class ShareService
         $this->appendToLog($share['owner_id'], $share['token'], [
             'event'     => 'login_failed',
             'timestamp' => time(),
+        ]);
+    }
+
+    /**
+     * Schreibt einen Eintrag, wenn der Gast die Nachricht bestätigt hat. Der Text
+     * kommt aus dem Share (nicht vom Client) und hält fest, welche Fassung gemeint war.
+     */
+    public function appendMessageAckToLog(array $share): void
+    {
+        $this->appendToLog($share['owner_id'], $share['token'], [
+            'event'      => 'message_ack',
+            'guest_name' => $share['guest_name'] ?? '',
+            'message'    => mb_substr((string) ($share['guest_message'] ?? ''), 0, 200),
+            'timestamp'  => time(),
         ]);
     }
 
