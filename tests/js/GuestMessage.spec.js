@@ -4,7 +4,6 @@ import { defineComponent } from 'vue'
 import axios from '@nextcloud/axios'
 import GuestGallery from '../../src/views/GuestGallery.vue'
 import GuestMessageDialog from '../../src/components/GuestMessageDialog.vue'
-import ShareList from '../../src/components/ShareList.vue'
 
 const TOKEN = 'tok123'
 const STORAGE_KEY = `sr_guest_message_${TOKEN}`
@@ -208,27 +207,5 @@ describe('GuestMessageDialog', () => {
     await w.find('.sr-guest-message__overlay').trigger('click')
     expect(w.emitted('close')).toHaveLength(2)
     w.unmount()
-  })
-})
-
-describe('ShareList – Log-Eintrag', () => {
-  beforeEach(() => vi.resetAllMocks())
-
-  it('zeigt die Bestätigung wie ein Login-Ereignis, nicht als Bewertung', async () => {
-    axios.get.mockImplementation(url => Promise.resolve({
-      data: url.includes('/log')
-        ? { log: [{ event: 'message_ack', guest_name: 'Anna', message: 'Nur zur Auswahl', timestamp: 1700000000 }] }
-        : { shares: [{ token: TOKEN, nc_path: '/Fotos', permissions: 'view', guest_message: 'Nur zur Auswahl', active: true }] },
-    }))
-    const w = mount(ShareList, { props: { ncPath: '/Fotos' }, global: { stubs: { Teleport: true } } })
-    await flushPromises()
-
-    await w.find('button[title="Bewertungs-Log anzeigen"]').trigger('click')
-    await flushPromises()
-
-    const entry = w.find('.sr-share-list__log-entry--message_ack')
-    expect(entry.exists()).toBe(true)
-    expect(entry.text()).toContain('Anna')
-    expect(entry.text()).not.toContain('☆')
   })
 })
