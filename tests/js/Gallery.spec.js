@@ -360,6 +360,21 @@ describe('Gallery – onBatchRate', () => {
 
 // ──────────────────────────────────────────────────────────────────────────────
 
+describe('Gallery – Gast-Nachricht im Header', () => {
+  it('zeigt den Button nur mit Nachricht und meldet den Klick', async () => {
+    const { w } = factory({ hasGuestMessage: true })
+    await flushPromises()
+    await w.find('[data-testid="guest-message-open"]').trigger('click')
+    expect(w.emitted('open-guest-message')).toHaveLength(1)
+  })
+
+  it('zeigt ohne Nachricht keinen Button', async () => {
+    const { w } = factory()
+    await flushPromises()
+    expect(w.find('[data-testid="guest-message-open"]').exists()).toBe(false)
+  })
+})
+
 describe('Gallery – Export Modal', () => {
   it('Export-Button ist sichtbar wenn allowExport=true', async () => {
     const { w } = factory({ allowExport: true })

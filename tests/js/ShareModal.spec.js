@@ -510,4 +510,41 @@ describe('ShareModal', () => {
     await flushPromises()
     expect(axios.put.mock.calls[0][1].recursive).toBe(true)
   })
+
+  // ── Nachricht an den Gast ────────────────────────────────────────────────────
+
+  it('Anlegen: sendet die getrimmte Nachricht', async () => {
+    axios.post.mockResolvedValue({ data: { share: { token: 't', nc_path: '/', permissions: 'view' } } })
+    const w = factory()
+    await w.find('[data-testid="guest-message"]').setValue('  Nur zur Auswahl  ')
+    await w.find('input[placeholder*="Anna"]').setValue('Anna')
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(axios.post.mock.calls[0][1].guest_message).toBe('Nur zur Auswahl')
+  })
+
+  it('Anlegen: ohne Nachricht wird kein Feld gesendet', async () => {
+    axios.post.mockResolvedValue({ data: { share: { token: 't', nc_path: '/', permissions: 'view' } } })
+    const w = factory()
+    await w.find('input[placeholder*="Anna"]').setValue('Anna')
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(axios.post.mock.calls[0][1]).not.toHaveProperty('guest_message')
+  })
+
+  it('Bearbeiten: befüllt das Feld, geleert wird null gesendet', async () => {
+    axios.put.mockResolvedValue({ data: { share: {} } })
+    const w = factory({ editShare: { token: 't', nc_path: '/', permissions: 'rate', guest_name: 'Anna', guest_message: 'Alt' } })
+    const field = w.find('[data-testid="guest-message"]')
+    expect(field.element.value).toBe('Alt')
+    await field.setValue('   ')
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(axios.put.mock.calls[0][1].guest_message).toBeNull()
+  })
+
+  it('begrenzt die Eingabe auf die Backend-Länge', () => {
+    const w = factory()
+    expect(w.find('[data-testid="guest-message"]').attributes('maxlength')).toBe('1000')
+  })
 })
