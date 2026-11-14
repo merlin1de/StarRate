@@ -678,7 +678,9 @@ class RawPreviewExtractor
             // muss nie vollständig in den Speicher.
             $im->setOption('jpeg:size', $outW . 'x' . $outH);
             $im->readImageBlob($jpeg);
-            $im->thumbnailImage($outW, $outH, true);
+            // Exakte Zielgröße statt bestfit: outW/outH sind schon seitenrichtig
+            // berechnet, bestfit rundet je nach ImageMagick-Version 1 px anders.
+            $im->thumbnailImage($outW, $outH, false);
             match ($orientation) {
                 2 => $im->flopImage(),
                 3 => $im->rotateImage('#000', 180),
