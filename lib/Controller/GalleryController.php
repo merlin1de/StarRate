@@ -353,14 +353,16 @@ class GalleryController extends Controller
         Folder $folder, Folder $userFolder, string $sort, string $order,
         bool $recursive, int $depth, bool $showRaw,
     ): array {
-        // v4: Namens-Sortierung wie Files (#112), Key enthält die Sprache.
+        // v4: Namens-Sortierung wie Files (#112), Key enthält die Sprache —
+        // nur wo sie die Reihenfolge beeinflusst (Namen oder Ordnergruppen).
+        $byName = ($sort !== 'mtime' && $sort !== 'size') || ($recursive && $depth > 0);
         // v3: RAW-MIME-Typ ergänzt, Key enthält show_raw.
         // v2: Cache-Format-Bump — neue Felder (relPath/groupKey) und neuer
         // Recursive-DB-Pfad (anderes path-Format als v1).
         $key = sprintf(
             'list-v4:%d:%s:%s:r%d:d%d:raw%d:%s',
             $folder->getId(), $sort, $order, $recursive ? 1 : 0, $depth, $showRaw ? 1 : 0,
-            $this->nameSorter->language(),
+            $byName ? $this->nameSorter->language() : '-',
         );
 
         $cached = $this->getListCache()->get($key);
