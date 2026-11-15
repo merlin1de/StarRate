@@ -56,6 +56,7 @@ class ShareService
         private readonly ExifService     $exifService,
         private readonly UserSettings    $userSettings,
         private readonly XmpStoreResolver $xmpStores,
+        private readonly NameSorter      $nameSorter,
     ) {}
 
     // ─── Share erstellen / verwalten ─────────────────────────────────────────
@@ -355,7 +356,9 @@ class ShareService
 
         // Zentrale Sortierung nach Owner-Präferenz — deckt beide Zweige ab
         // (rekursiv behält den groupKey-Primärschlüssel für die Ordner-Gruppierung).
-        $this->sortImages($images, $sort, $order);
+        // Namen vergleicht der NameSorter wie Files, in der Sprache des Gasts (#112).
+        $this->nameSorter->sortImages($images, $sort, $order);
+        $this->nameSorter->sortByName($folders);
 
         if (!empty($images)) {
             // Aktuelle NC-Tag-Bewertungen laden
@@ -1141,34 +1144,8 @@ class ShareService
         }
 
         // Sortierung erfolgt zentral in getImagesForShare (Owner-Präferenz,
-        // groupKey als Primärschlüssel) — siehe sortImages().
+        // groupKey als Primärschlüssel) — siehe NameSorter::sortImages().
         return array_values($images);
-    }
-
-    /**
-     * Sortiert Bild-Arrays nach der Owner-Einstellung (name|mtime|size, asc|desc).
-     * Ein vorhandener `groupKey` (Pfad-Präfix bei rekursiven Shares mit depth>=1)
-     * bleibt Primärschlüssel, damit Items desselben Ordners zusammenbleiben —
-     * spiegelt GalleryController::listImages.
-     *
-     * @param list<array{name: string, mtime: int, size: int, groupKey?: string}> $images
-     */
-    private function sortImages(array &$images, string $sort, string $order): void
-    {
-        usort($images, static function (array $a, array $b) use ($sort, $order): int {
-            $ga = $a['groupKey'] ?? '';
-            $gb = $b['groupKey'] ?? '';
-            $cmp = ($ga !== '' || $gb !== '') ? strcasecmp($ga, $gb) : 0;
-            if ($cmp !== 0) return $cmp;
-
-            $cmp = match ($sort) {
-                'mtime' => $a['mtime'] <=> $b['mtime'],
-                'size'  => $a['size']  <=> $b['size'],
-                default => strcasecmp($a['name'], $b['name']),
-            };
-            return $order === 'desc' ? -$cmp : $cmp;
-        });
-        $images = array_values($images);
     }
 
     /**

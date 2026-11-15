@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\StarRate\Tests\Unit\Service;
 
 use OCA\StarRate\Service\ExifService;
+use OCA\StarRate\Service\NameSorter;
 use OCA\StarRate\Service\ShareService;
 use OCA\StarRate\Service\SidecarService;
 use OCA\StarRate\Service\XmpStoreResolver;
@@ -16,6 +17,7 @@ use OCP\Files\IRootFolder;
 use OCP\IConfig;
 use OCP\IDBConnection;
 use OCP\IPreview as IPreviewManager;
+use OCP\L10N\IFactory;
 use OCP\Security\ISecureRandom;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -60,6 +62,7 @@ class ShareServiceTest extends TestCase
             $this->createMock(ExifService::class),
             $this->createMock(UserSettings::class),
             $this->createMock(XmpStoreResolver::class),
+            $this->nameSorter(),
         );
     }
 
@@ -826,6 +829,7 @@ class ShareServiceTest extends TestCase
             $exif,
             $userSettings,
             new XmpStoreResolver($exif, $this->createMock(SidecarService::class)),
+            $this->nameSorter(),
         );
     }
 
@@ -868,6 +872,22 @@ class ShareServiceTest extends TestCase
         $this->assertSame(['a.jpg', 'b.jpg'], array_column($result['images'], 'name'));
     }
 
+    public function testGetImagesForShareSortsNumberedNamesAndSubfoldersLikeFiles(): void
+    {
+        // #112: 1_ vor 10_ (wie Files), Gast-Unterordner werden ebenfalls sortiert
+        $service = $this->makeServiceForImages(
+            $this->folderWithImages(
+                ['10_photo.jpg' => [1, 1], '2_photo.jpg' => [1, 1], '1_photo.jpg' => [1, 1]],
+                ['Tag 10', 'tag 1', 'Tag 2'],
+            ),
+            $this->sortSettings('name', 'asc'),
+        );
+        $share  = ['owner_id' => self::OWNER_ID, 'nc_path' => '/Fotos', 'min_rating' => 0];
+        $result = $service->getImagesForShare($share, '');
+        $this->assertSame(['1_photo.jpg', '2_photo.jpg', '10_photo.jpg'], array_column($result['images'], 'name'));
+        $this->assertSame(['tag 1', 'Tag 2', 'Tag 10'], array_column($result['folders'], 'name'));
+    }
+
     public function testGetImagesForShareShowsRawsOnlyWhenOwnerEnabledThem(): void
     {
         $files = ['a.jpg' => [10, 100], 'a.NEF' => [10, 900], 'b.MRW' => [10, 900]];
@@ -889,9 +909,14 @@ class ShareServiceTest extends TestCase
      *
      * @param array<string, array{0:int,1:int}> $files
      */
-    private function folderWithImages(array $files): IRootFolder
+    private function folderWithImages(array $files, array $subfolders = []): IRootFolder
     {
         $nodes = [];
+        foreach ($subfolders as $name) {
+            $sub = $this->createMock(Folder::class);
+            $sub->method('getName')->willReturn($name);
+            $nodes[] = $sub;
+        }
         $id    = 1;
         foreach ($files as $name => [$mtime, $size]) {
             $file = $this->createMock(File::class);
@@ -913,6 +938,13 @@ class ShareServiceTest extends TestCase
         $rootFolder = $this->createMock(IRootFolder::class);
         $rootFolder->method('getUserFolder')->willReturn($userFolder);
         return $rootFolder;
+    }
+
+    private function nameSorter(): NameSorter
+    {
+        $factory = $this->createMock(IFactory::class);
+        $factory->method('findLanguage')->willReturn('en');
+        return new NameSorter($factory);
     }
 
     private function sortSettings(string $sort, string $order): UserSettings
@@ -944,6 +976,7 @@ class ShareServiceTest extends TestCase
             $this->createMock(ExifService::class),
             $userSettings,
             $this->createMock(XmpStoreResolver::class),
+            $this->nameSorter(),
         );
     }
 
@@ -968,6 +1001,7 @@ class ShareServiceTest extends TestCase
             $exif,
             $userSettings,
             new XmpStoreResolver($exif, $sidecar ?? $this->createMock(SidecarService::class)),
+            $this->nameSorter(),
         );
     }
 

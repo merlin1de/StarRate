@@ -54,6 +54,8 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
+          # intl: NameSorter-Tests (#112) laufen sonst nur im Fallback
+          extensions: intl
 
       - name: Install dependencies
         run: composer update --no-interaction --prefer-dist

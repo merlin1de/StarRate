@@ -6,6 +6,7 @@ namespace OCA\StarRate\Controller;
 
 use OCA\StarRate\Service\RawPreviewExtractor;
 use OCA\StarRate\Service\ShareService;
+use OCA\StarRate\Service\NameSorter;
 use OCA\StarRate\Service\TagService;
 use OCA\StarRate\Settings\UserSettings;
 use OCP\AppFramework\Controller;
@@ -69,6 +70,7 @@ class GalleryController extends Controller
         private readonly ICacheFactory   $cacheFactory,
         private readonly IDBConnection   $db,
         private readonly UserSettings    $userSettings,
+        private readonly NameSorter      $nameSorter,
     ) {
         parent::__construct($appName, $request);
     }
@@ -178,7 +180,7 @@ class GalleryController extends Controller
                     $folders[] = ['name' => $node->getName(), 'path' => $path === '/' ? '/' . $node->getName() : $path . '/' . $node->getName()];
                 }
             }
-            usort($folders, static fn(array $a, array $b): int => strcasecmp($a['name'], $b['name']));
+            $this->nameSorter->sortByName($folders);
 
             return new DataResponse([
                 'images'  => $slice,
@@ -351,12 +353,14 @@ class GalleryController extends Controller
         Folder $folder, Folder $userFolder, string $sort, string $order,
         bool $recursive, int $depth, bool $showRaw,
     ): array {
+        // v4: Namens-Sortierung wie Files (#112), Key enthält die Sprache.
         // v3: RAW-MIME-Typ ergänzt, Key enthält show_raw.
         // v2: Cache-Format-Bump — neue Felder (relPath/groupKey) und neuer
         // Recursive-DB-Pfad (anderes path-Format als v1).
         $key = sprintf(
-            'list-v3:%d:%s:%s:r%d:d%d:raw%d',
+            'list-v4:%d:%s:%s:r%d:d%d:raw%d:%s',
             $folder->getId(), $sort, $order, $recursive ? 1 : 0, $depth, $showRaw ? 1 : 0,
+            $this->nameSorter->language(),
         );
 
         $cached = $this->getListCache()->get($key);
@@ -413,23 +417,11 @@ class GalleryController extends Controller
             }
         }
 
-        usort($images, function (array $a, array $b) use ($sort, $order): int {
-            // Bei Group-Depth>=1 kommt der groupKey-Vergleich vor dem User-Sort,
-            // damit Items mit gleichem Pfad-Präfix nebeneinander landen.
-            $cmp = $a['groupKey'] !== '' || $b['groupKey'] !== ''
-                ? strcasecmp($a['groupKey'], $b['groupKey'])
-                : 0;
-            if ($cmp !== 0) return $cmp;
+        // Bei Group-Depth>=1 kommt der groupKey vor dem User-Sort, damit Items
+        // mit gleichem Pfad-Präfix nebeneinander landen.
+        $this->nameSorter->sortImages($images, $sort, $order);
 
-            $cmp = match ($sort) {
-                'mtime' => $a['mtime'] <=> $b['mtime'],
-                'size'  => $a['size']  <=> $b['size'],
-                default => strcasecmp($a['name'], $b['name']),
-            };
-            return $order === 'desc' ? -$cmp : $cmp;
-        });
-
-        return array_values($images);
+        return $images;
     }
 
     /**
