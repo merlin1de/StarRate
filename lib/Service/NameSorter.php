@@ -16,14 +16,21 @@ use OCP\L10N\IFactory;
  * berechnet und dann per strcmp verglichen — der Collator steckt nicht im
  * usort-Callback.
  *
- * Ohne intl gibt es einen Fallback-Schlüssel (Kleinbuchstaben, Zahlen auf
- * feste Breite gepolstert): Zahlen und Groß-/Kleinschreibung stimmen, Umlaute
+ * Ohne intl gibt es einen Fallback-Schlüssel (Kleinbuchstaben, Zahlen mit
+ * vorangestellter Länge): Zahlen und Groß-/Kleinschreibung stimmen, Umlaute
  * nicht. strnatcasecmp wäre keine Alternative — es stellt photo_010 vor photo_9.
+ *
+ * Aufbau der Schlüssel: Basisschlüssel (ICU oder Fallback, beide ohne NUL-Byte)
+ * + NUL + Originalname. Das NUL sortiert unter allem, der Name entscheidet nur
+ * bei Gleichstand — z. B. „Shoot 1“ vs. „Shoot 01“, die numerisch gleich sind.
  */
 class NameSorter
 {
-    /** Stellen, auf die Zahlenblöcke im Fallback-Schlüssel gepolstert werden */
-    private const PAD = 20;
+    /** Trenner in Schlüsseln; ICU- und Fallback-Basisschlüssel enthalten kein NUL */
+    private const SEP = "\0";
+
+    /** Präfix für Namen ohne ICU-Schlüssel (z. B. kaputtes UTF-8): geschlossen ans Ende */
+    private const UNKEYABLE = "\xFF\xFF\xFF";
 
     private ?\Collator $collator = null;
     private bool $resolved = false;
@@ -46,30 +53,56 @@ class NameSorter
      */
     public function key(string $name): string
     {
-        $collator = $this->collator();
-        if ($collator !== null) {
-            $key = $collator->getSortKey($name);
-            if ($key !== false) {
-                return $key;
-            }
-        }
-        return self::fallbackKey($name);
+        return $this->baseKey($name) . self::SEP . $name;
     }
 
     /**
-     * Fallback ohne intl: Kleinbuchstaben, jeder Zahlenblock ohne führende
-     * Nullen auf PAD Stellen gepolstert. Der angehängte Originalname macht
-     * die Reihenfolge bei sonst gleichen Schlüsseln (DSC vs dsc) eindeutig.
+     * Sortierschlüssel für einen '/'-Pfad (groupKey der rekursiven Ansicht):
+     * Segment für Segment verglichen, damit ein Ordner vor seinen Unterordnern
+     * steht und sein Teilbaum zusammenbleibt — „Hochzeit/Feier“ vor
+     * „Hochzeit_Extras“, obwohl ICU „_“ vor „/“ einordnet.
+     */
+    public function pathKey(string $path): string
+    {
+        $segments = array_map(fn(string $s): string => $this->baseKey($s), explode('/', $path));
+        return implode(self::SEP, $segments) . self::SEP . self::SEP . $path;
+    }
+
+    /**
+     * Fallback ohne intl (mit Originalname als Gleichstand-Entscheider).
      */
     public static function fallbackKey(string $name): string
     {
-        $lower  = mb_strtolower($name);
-        $padded = preg_replace_callback(
+        return self::fallbackBase($name) . self::SEP . $name;
+    }
+
+    /**
+     * Kleinbuchstaben, jeder Zahlenblock ohne führende Nullen mit seiner Länge
+     * davor (9 → 0019, 10 → 00210): Zahlen vergleichen nach Wert, egal wie lang.
+     */
+    private static function fallbackBase(string $name): string
+    {
+        $lower = mb_strtolower($name);
+        $key   = preg_replace_callback(
             '/\d+/',
-            static fn(array $m): string => str_pad(ltrim($m[0], '0') ?: '0', self::PAD, '0', STR_PAD_LEFT),
+            static function (array $m): string {
+                $digits = ltrim($m[0], '0') ?: '0';
+                return sprintf('%03d', strlen($digits)) . $digits;
+            },
             $lower,
         );
-        return ($padded ?? $lower) . "\0" . $name;
+        return $key ?? $lower;
+    }
+
+    private function baseKey(string $name): string
+    {
+        $collator = $this->collator();
+        if ($collator === null) {
+            return self::fallbackBase($name);
+        }
+        $key = $collator->getSortKey($name);
+        // Kein ICU-Schlüssel: nicht mit Fallback-Text zwischen die ICU-Bytes mischen
+        return $key === false ? self::UNKEYABLE . self::fallbackBase($name) : $key;
     }
 
     /**
@@ -94,9 +127,10 @@ class NameSorter
     {
         $groupKeys = [];
         $nameKeys  = [];
+        $pathKeys  = []; // wenige Ordner, viele Bilder: Schlüssel pro Ordner einmal
         foreach ($images as $i => $img) {
             $group         = $img['groupKey'] ?? '';
-            $groupKeys[$i] = $group === '' ? '' : $this->key($group);
+            $groupKeys[$i] = $group === '' ? '' : ($pathKeys[$group] ??= $this->pathKey($group));
             if ($sort !== 'mtime' && $sort !== 'size') {
                 $nameKeys[$i] = $this->key($img['name']);
             }

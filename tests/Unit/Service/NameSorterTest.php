@@ -49,6 +49,13 @@ class NameSorterTest extends TestCase
         $this->assertSame(['photo_1.jpg', 'Photo_9.jpg', 'photo_010.jpg'], $names);
     }
 
+    public function testFallbackKeyHandlesNumbersLongerThanTwentyDigits(): void
+    {
+        $names = ['1000000000000000000000000.jpg', '999999999999999999999.jpg'];
+        usort($names, static fn(string $a, string $b): int => strcmp(NameSorter::fallbackKey($a), NameSorter::fallbackKey($b)));
+        $this->assertSame(['999999999999999999999.jpg', '1000000000000000000000000.jpg'], $names);
+    }
+
     public function testFallbackKeyIsUniquePerName(): void
     {
         $this->assertNotSame(NameSorter::fallbackKey('DSC_1.jpg'), NameSorter::fallbackKey('dsc_1.jpg'));
@@ -130,6 +137,49 @@ class NameSorterTest extends TestCase
         $this->sorter()->sortImages($images, 'name', 'desc');
         // Gruppen aufsteigend (Tag 2 vor Tag 10), innerhalb absteigend nach Name
         $this->assertSame(['d.jpg', 'a.jpg', 'c.jpg', 'b.jpg'], array_column($images, 'name'));
+    }
+
+    public function testSubtreeStaysTogetherBeforeSiblingWithSamePrefix(): void
+    {
+        // ICU ordnet „_“ vor „/“ — als ganzer String verglichen landete
+        // Hochzeit_Extras zwischen Hochzeit und Hochzeit/Feier
+        $images = [
+            ['name' => 'x.jpg', 'mtime' => 1, 'size' => 1, 'groupKey' => 'Hochzeit_Extras'],
+            ['name' => 'y.jpg', 'mtime' => 1, 'size' => 1, 'groupKey' => 'Hochzeit/Feier'],
+            ['name' => 'z.jpg', 'mtime' => 1, 'size' => 1, 'groupKey' => 'Hochzeit'],
+            ['name' => 'w.jpg', 'mtime' => 1, 'size' => 1, 'groupKey' => 'Hochzeit/Ablauf'],
+        ];
+        $this->sorter()->sortImages($images, 'name', 'asc');
+        $this->assertSame(
+            ['Hochzeit', 'Hochzeit/Ablauf', 'Hochzeit/Feier', 'Hochzeit_Extras'],
+            array_column($images, 'groupKey'),
+        );
+    }
+
+    public function testNumericallyEqualGroupsStaySeparate(): void
+    {
+        // „Shoot 1“ und „Shoot 01“ sind numerisch gleich, aber zwei Ordner
+        $images = [
+            ['name' => 'a.jpg', 'mtime' => 1, 'size' => 1, 'groupKey' => 'Shoot 1'],
+            ['name' => 'b.jpg', 'mtime' => 1, 'size' => 1, 'groupKey' => 'Shoot 01'],
+            ['name' => 'c.jpg', 'mtime' => 1, 'size' => 1, 'groupKey' => 'Shoot 1'],
+            ['name' => 'd.jpg', 'mtime' => 1, 'size' => 1, 'groupKey' => 'Shoot 01'],
+        ];
+        $this->sorter()->sortImages($images, 'name', 'asc');
+        $groups = array_column($images, 'groupKey');
+        $this->assertSame($groups[0], $groups[1]);
+        $this->assertSame($groups[2], $groups[3]);
+        $this->assertNotSame($groups[1], $groups[2]);
+    }
+
+    public function testNameWithoutCollatorKeySortsLast(): void
+    {
+        $this->requireIntl();
+        $bad = 'b' . chr(0xC3) . chr(0x28) . '.jpg'; // ungültiges UTF-8
+        if ((new \Collator('en'))->getSortKey($bad) !== false) {
+            $this->markTestSkipped('ICU liefert hier einen Schlüssel für ungültiges UTF-8');
+        }
+        $this->assertSame(['a.jpg', 'z.jpg', $bad], $this->sortNames($this->sorter(), [$bad, 'z.jpg', 'a.jpg']));
     }
 
     public function testSortImagesReturnsList(): void
