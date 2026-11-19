@@ -78,7 +78,7 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
 - Englisch und Deutsch
     ]]></description>
 
-    <version>1.4.2</version>
+    <version>1.4.3</version>
     <licence>agpl</licence>
 
     <author mail="starrate@merlin1.de" homepage="https://github.com/merlin1de/starrate">
@@ -93,8 +93,6 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
     <website>https://github.com/merlin1de/starrate</website>
     <bugs>https://github.com/merlin1de/starrate/issues</bugs>
     <repository type="git">https://github.com/merlin1de/starrate</repository>
-
-    <video>https://www.youtube.com/watch?v=ziOHtoiHQ5g</video>
 
     <!-- ?v=N: Der Store-Bildproxy (usercontent.apps.nextcloud.com) cacht jede URL
          dauerhaft. Nach neuen Aufnahmen N hochzählen, sonst zeigt der Store die alten Bilder. -->
