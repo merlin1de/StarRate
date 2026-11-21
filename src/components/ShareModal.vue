@@ -76,6 +76,26 @@
           </div>
 
           <div class="sr-share-modal__field">
+            <label class="sr-share-modal__label" for="sr-share-guest-message">
+              {{ t('starrate', 'Nachricht an den Empfänger') }}
+              <span class="sr-share-modal__optional">({{ t('starrate', 'optional') }})</span>
+            </label>
+            <textarea
+              id="sr-share-guest-message"
+              v-model="form.guestMessage"
+              class="sr-share-modal__input sr-share-modal__textarea"
+              rows="3"
+              data-testid="guest-message"
+              :placeholder="t('starrate', 'z.B. Nur zur Auswahl – bitte nicht herunterladen oder veröffentlichen.')"
+              :maxlength="GUEST_MESSAGE_MAX"
+            />
+            <div class="sr-share-modal__message-meta">
+              <span>{{ t('starrate', 'Wird dem Gast beim Öffnen der Galerie angezeigt. Nur Text.') }}</span>
+              <span>{{ form.guestMessage.length }}/{{ GUEST_MESSAGE_MAX }}</span>
+            </div>
+          </div>
+
+          <div class="sr-share-modal__field">
             <label class="sr-share-modal__label">{{ t('starrate', 'Berechtigung') }}</label>
             <div class="sr-share-modal__toggle-group">
               <button
@@ -236,6 +256,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'created', 'updated'])
 
+// MUSS mit ShareService::GUEST_MESSAGE_MAX_LENGTH übereinstimmen.
+const GUEST_MESSAGE_MAX = 1000
+
 const isEditMode = computed(() => !!props.editShare)
 
 const submitLabel = computed(() => {
@@ -268,6 +291,7 @@ function buildInitialForm() {
     return {
       ncPath:        e.nc_path || '/',
       guestName:     e.guest_name || '',
+      guestMessage:  e.guest_message || '',
       permissions:   e.permissions || 'rate',
       allowPick:     !!e.allow_pick,
       allowExport:   !!e.allow_export,
@@ -289,6 +313,7 @@ function buildInitialForm() {
   return {
     ncPath:        props.ncPath,
     guestName:     '',
+    guestMessage:  '',
     permissions:   'rate',
     allowPick:     false,
     allowExport:   false,
@@ -377,6 +402,14 @@ async function create() {
 
   if (form.value.guestName.trim()) {
     body.guest_name = form.value.guestName.trim()
+  }
+
+  // Edit-Mode: immer senden — leer = null entfernt die Nachricht im Backend.
+  const guestMessage = form.value.guestMessage.trim()
+  if (guestMessage) {
+    body.guest_message = guestMessage
+  } else if (isEditMode.value) {
+    body.guest_message = null
   }
 
   // Passwort-Logik:
@@ -518,6 +551,20 @@ async function create() {
 .sr-share-modal__select:focus {
   outline: none;
   border-color: #e94560;
+}
+.sr-share-modal__textarea {
+  display: block;
+  font-family: inherit;
+  line-height: 1.4;
+  min-height: 4.5rem;
+  resize: vertical;
+}
+.sr-share-modal__message-meta {
+  color: #71717a;
+  display: flex;
+  font-size: 0.75rem;
+  gap: 0.75rem;
+  justify-content: space-between;
 }
 .sr-share-modal__input--readonly {
   color: #a1a1aa;

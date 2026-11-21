@@ -328,7 +328,14 @@ OC.L10N.register(
         "Änderungsdatum" : "Modification date",
         "••••••••  (leer lassen zum Beibehalten)" : "••••••••  (leave empty to keep)",
         "✓ Gespeichert" : "✓ Saved",
-        "✗ Fehler beim Speichern" : "✗ Error while saving"
+        "✗ Fehler beim Speichern" : "✗ Error while saving",
+        "Nachricht an den Empfänger" : "Message to the recipient",
+        "z.B. Nur zur Auswahl – bitte nicht herunterladen oder veröffentlichen." : "e.g. For culling only – please don't download or post these.",
+        "Wird dem Gast beim Öffnen der Galerie angezeigt. Nur Text." : "Shown to the guest when they open the gallery. Plain text only.",
+        "Nachricht anzeigen" : "Show message",
+        "Nachricht zu dieser Galerie" : "A note about this gallery",
+        "Verstanden" : "Got it",
+        "{name} hat die Nachricht bestätigt" : "{name} acknowledged the message"
     },
     "nplurals=2; plural=(n != 1);"
 );

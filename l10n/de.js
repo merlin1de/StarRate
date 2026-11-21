@@ -255,7 +255,14 @@ OC.L10N.register(
         "Nein" : "Nein",
         "Interner Fehler" : "Interner Fehler",
         "Nicht gefunden" : "Nicht gefunden",
-        "Nicht authentifiziert" : "Nicht authentifiziert"
+        "Nicht authentifiziert" : "Nicht authentifiziert",
+        "Nachricht an den Empfänger" : "Nachricht an den Empfänger",
+        "z.B. Nur zur Auswahl – bitte nicht herunterladen oder veröffentlichen." : "z.B. Nur zur Auswahl – bitte nicht herunterladen oder veröffentlichen.",
+        "Wird dem Gast beim Öffnen der Galerie angezeigt. Nur Text." : "Wird dem Gast beim Öffnen der Galerie angezeigt. Nur Text.",
+        "Nachricht anzeigen" : "Nachricht anzeigen",
+        "Nachricht zu dieser Galerie" : "Nachricht zu dieser Galerie",
+        "Verstanden" : "Verstanden",
+        "{name} hat die Nachricht bestätigt" : "{name} hat die Nachricht bestätigt"
     },
     "nplurals=2; plural=(n != 1);"
 );

@@ -46,6 +46,15 @@
     :allow-download="props.allowDownload"
     :download-url-fn="downloadUrlFn"
     :download-zip-url-fn="downloadZipUrlFn"
+    :has-guest-message="!!guestMessage"
+    @open-guest-message="messageOpen = true"
+  />
+
+  <GuestMessageDialog
+    v-if="messageOpen && !passwordDlg && guestMessage"
+    :message="guestMessage"
+    :dismissible="guestMessage === seenMessage"
+    @close="closeMessage"
   />
 </template>
 
@@ -55,6 +64,7 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { t } from '@nextcloud/l10n'
 import Gallery from './Gallery.vue'
+import GuestMessageDialog from '../components/GuestMessageDialog.vue'
 
 /* global __APP_VERSION__ */
 const appVersion = __APP_VERSION__
@@ -96,6 +106,51 @@ function handle401() {
   localStorage.removeItem(STORAGE_KEY)
   storedPwToken.value = ''
   passwordDlg.value   = true
+  guestMessage.value  = null
+  messageOpen.value   = false
+}
+
+// ── Nachricht an den Gast ─────────────────────────────────────────────────────
+//
+// Kommt mit der Bilderliste (also erst nach der Passwortprüfung). "Gesehen" wird
+// nur im Browser gemerkt, als zuletzt bestätigter Text: ändert der Owner den
+// Text, erscheint sie automatisch erneut.
+
+const MESSAGE_STORAGE_KEY = `sr_guest_message_${props.token}`
+const guestMessage = ref(null)
+const messageOpen  = ref(false)
+const seenMessage  = ref(localStorage.getItem(MESSAGE_STORAGE_KEY))
+
+function syncGuestMessage(message) {
+  guestMessage.value = message || null
+  if (!guestMessage.value) {
+    localStorage.removeItem(MESSAGE_STORAGE_KEY)
+    seenMessage.value = null
+    messageOpen.value = false
+  } else if (guestMessage.value !== seenMessage.value) {
+    messageOpen.value = true
+  }
+}
+
+async function closeMessage() {
+  messageOpen.value = false
+  const message = guestMessage.value
+  if (message === seenMessage.value) return
+
+  // Sofort im Speicher merken, damit ein Ordnerwechsel den Dialog nicht neu öffnet.
+  // Dauerhaft erst bei Erfolg: sonst fehlte die Bestätigung im Log des Owners,
+  // und beim nächsten Besuch wird sie stattdessen erneut abgefragt.
+  seenMessage.value = message
+  try {
+    await axios.post(
+      generateUrl(`/apps/starrate/api/guest/${props.token}/message/ack`),
+      {},
+      { headers: pwHeader() },
+    )
+    localStorage.setItem(MESSAGE_STORAGE_KEY, message)
+  } catch (e) {
+    if (e?.response?.status === 401) handle401()
+  }
 }
 
 // ── Gast-API-Callbacks ────────────────────────────────────────────────────────
@@ -104,6 +159,7 @@ async function loadImagesFn(path) {
   try {
     const url = generateUrl(`/apps/starrate/api/guest/${props.token}/images`)
     const { data } = await axios.get(url, { params: { path }, headers: pwHeader(), timeout: 15000 })
+    syncGuestMessage(data?.guest_message)
     return data
   } catch (e) {
     if (e?.response?.status === 401) handle401()

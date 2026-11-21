@@ -16,6 +16,7 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IConfig;
 use OCP\IRequest;
+use OCP\ISession;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
@@ -31,6 +32,7 @@ class ShareController extends Controller
         private readonly IUserSession  $userSession,
         private readonly LoggerInterface $logger,
         private readonly IConfig         $config,
+        private readonly ISession        $session,
     ) {
         parent::__construct($appName, $request);
     }
@@ -76,6 +78,7 @@ class ShareController extends Controller
                 !empty($body['recursive']),
                 isset($body['depth']) ? (int) $body['depth'] : 0,
                 !empty($body['allow_download']),
+                $body['guest_message'] ?? null,
             );
             return new DataResponse(['share' => $share], Http::STATUS_CREATED);
         } catch (\InvalidArgumentException $e) {
@@ -285,11 +288,10 @@ class ShareController extends Controller
         }
 
         // Login-Event: einmal pro Session loggen (deckt pw-Shares UND offene Shares ab)
-        $session = \OC::$server->get(\OCP\ISession::class);
         $sessionKey = "starrate_share_{$token}_logged";
-        if (!$session->get($sessionKey)) {
+        if (!$this->session->get($sessionKey)) {
             $this->shareService->appendLoginToLog($share);
-            $session->set($sessionKey, true);
+            $this->session->set($sessionKey, true);
         }
 
         $subPath = (string) ($this->request->getParam('path', ''));
@@ -300,6 +302,8 @@ class ShareController extends Controller
                 'images'  => $result['images'],
                 'folders' => $result['folders'],
                 'total'   => count($result['images']),
+                // Erst hier, hinter der Passwortprüfung — nie im Seiten-Template.
+                'guest_message' => $share['guest_message'] ?? null,
             ]);
         } catch (\Exception $e) {
             $this->logger->error("StarRate ShareController::guestImages – {$e->getMessage()}");
@@ -538,8 +542,7 @@ class ShareController extends Controller
         $password = $body['password'] ?? '';
 
         if ($this->shareService->verifyPassword($share, $password)) {
-            $session = \OC::$server->get(\OCP\ISession::class);
-            $session->set("starrate_share_{$token}", true);
+            $this->session->set("starrate_share_{$token}", true);
             // pw_token: persistenter Nachweis für mobile Browser (localStorage)
             $pwToken = hash_hmac('sha256', $token, $share['password_hash']);
             return new DataResponse(['ok' => true, 'pw_token' => $pwToken]);
@@ -548,6 +551,39 @@ class ShareController extends Controller
         $this->logger->warning("StarRate guest password failed: token={$token} ip={$this->request->getRemoteAddress()}");
         $this->shareService->appendLoginFailedToLog($share);
         return new DataResponse(['error' => 'Wrong password'], Http::STATUS_UNAUTHORIZED);
+    }
+
+    /**
+     * POST /api/guest/{token}/message/ack — Gast bestätigt die Nachricht.
+     *
+     * Pro Session und Nachrichtentext nur ein Log-Eintrag: das Log ist auf 500
+     * Einträge begrenzt, wiederholte Requests dürfen keine Bewertungen verdrängen.
+     */
+    #[PublicPage]
+    #[NoCSRFRequired]
+    #[AnonRateLimit(limit: 30, period: 60)]
+    public function guestAcknowledgeMessage(string $token): DataResponse
+    {
+        $share = $this->getValidShare($token);
+        if ($share === null) {
+            return new DataResponse(['error' => 'Invalid link'], Http::STATUS_FORBIDDEN);
+        }
+        if (!$this->checkGuestPassword($token, $share)) {
+            return new DataResponse(['error' => 'Password required'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        $message = $share['guest_message'] ?? null;
+        if ($message === null || $message === '') {
+            return new DataResponse(['error' => 'No message'], Http::STATUS_NOT_FOUND);
+        }
+
+        $sessionKey = "starrate_share_{$token}_ack_" . hash('sha256', $message);
+        if (!$this->session->get($sessionKey)) {
+            $this->shareService->appendMessageAckToLog($share);
+            $this->session->set($sessionKey, true);
+        }
+
+        return new DataResponse(['ok' => true]);
     }
 
     // ─── Kommentare (Gast) ────────────────────────────────────────────────────
@@ -656,8 +692,7 @@ class ShareController extends Controller
         }
 
         // 1. PHP-Session (Desktop-Browser, kurze Sitzungen)
-        $session = \OC::$server->get(\OCP\ISession::class);
-        if ($session->get("starrate_share_{$token}") === true) {
+        if ($this->session->get("starrate_share_{$token}") === true) {
             return true;
         }
 
@@ -709,6 +744,14 @@ class ShareController extends Controller
             $d = (int) $body['depth'];
             if ($d < 0 || $d > 4) {
                 $errors[] = 'depth muss zwischen 0 und 4 liegen';
+            }
+        }
+
+        if (array_key_exists('guest_message', $body) && $body['guest_message'] !== null) {
+            if (!is_string($body['guest_message'])) {
+                $errors[] = 'guest_message muss ein Text sein';
+            } elseif (mb_strlen(trim(str_replace("\r\n", "\n", $body['guest_message']))) > ShareService::GUEST_MESSAGE_MAX_LENGTH) {
+                $errors[] = 'guest_message darf höchstens ' . ShareService::GUEST_MESSAGE_MAX_LENGTH . ' Zeichen lang sein';
             }
         }
 

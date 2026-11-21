@@ -31,6 +31,21 @@
 
         <span v-if="guestMode && guestLabel" class="sr-breadcrumb__guest-label">{{ guestLabel }}</span>
 
+        <button
+          v-if="guestMode && hasGuestMessage"
+          class="sr-breadcrumb__guest-message"
+          type="button"
+          data-testid="guest-message-open"
+          :title="t('starrate', 'Nachricht anzeigen')"
+          :aria-label="t('starrate', 'Nachricht anzeigen')"
+          @click="emit('open-guest-message')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M3.5 7l8.5 6 8.5-6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
         <!-- Utility-Cluster (Desktop-only via CSS): Modus-Toggle, Help, Version -->
         <div class="sr-breadcrumb__utility">
           <div class="sr-breadcrumb__mode">
@@ -290,6 +305,8 @@ const props = defineProps({
   guestMode:      { type: Boolean,  default: false },
   /** Name-Badge im Breadcrumb (nur im Gast-Modus) */
   guestLabel:     { type: String,   default: '' },
+  /** Share hat eine Nachricht: Button im Breadcrumb zum erneuten Öffnen */
+  hasGuestMessage: { type: Boolean, default: false },
   /** Ersetzt /api/images — fn(path) → { images, folders } */
   loadImagesFn:   { type: Function, default: null },
   /** Ersetzt /api/rating/{id} POST — fn(fileId, payload) */
@@ -318,6 +335,8 @@ const props = defineProps({
   /** Ersetzt /api/download-zip — fn(ids[]) → URL (Gast, mit pw_token) */
   downloadZipUrlFn: { type: Function, default: null },
 })
+
+const emit = defineEmits(['open-guest-message'])
 
 // ─── Zustand ──────────────────────────────────────────────────────────────────
 
@@ -1211,6 +1230,25 @@ watch(() => route.query, q => {
   margin-left: auto;
   flex-shrink: 0;
 }
+
+.sr-breadcrumb__guest-message {
+  align-items: center;
+  background: #2a2a3e;
+  border: 1px solid #3f3f5a;
+  border-radius: 4px;
+  color: #a1a1aa;
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: 24px;
+  justify-content: center;
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+  width: 28px;
+}
+.sr-breadcrumb__guest-message:hover { color: #fff; }
+.sr-breadcrumb__guest-message svg { height: 15px; width: 15px; }
 
 .sr-breadcrumb__guest-label {
   background: #2a2a3e;

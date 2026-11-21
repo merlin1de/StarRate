@@ -71,6 +71,11 @@
                     :title="t('starrate', 'Kommentare erlaubt')"
                   >✓ 💬</span>
                   <span
+                    v-if="share.guest_message"
+                    class="sr-share-list__badge sr-share-list__badge--pick-on"
+                    :title="t('starrate', 'Nachricht an den Empfänger')"
+                  >✓ ✉</span>
+                  <span
                     v-if="share.recursive"
                     class="sr-share-list__badge sr-share-list__badge--pick-on"
                     :title="t('starrate', 'Rekursiv (alle Unterordner)') + (share.depth > 0 ? ` · ${t('starrate', 'Tiefe')} ${share.depth}` : '')"
@@ -173,17 +178,20 @@
                 <template v-for="(entry, i) in logs[share.token]" :key="i">
                   <!-- Login / Login-Fehlversuch -->
                   <div
-                    v-if="entry.event === 'login' || entry.event === 'login_failed'"
+                    v-if="entry.event === 'login' || entry.event === 'login_failed' || entry.event === 'message_ack'"
                     class="sr-share-list__log-entry sr-share-list__log-entry--event"
                     :class="`sr-share-list__log-entry--${entry.event}`"
                   >
                     <span class="sr-share-list__log-icon" aria-hidden="true">
-                      {{ entry.event === 'login' ? '🔓' : '🔒' }}
+                      {{ entry.event === 'login' ? '🔓' : entry.event === 'message_ack' ? '✉' : '🔒' }}
                     </span>
                     <span class="sr-share-list__log-text">
                       <template v-if="entry.event === 'login'">
                         {{ t('starrate', '{name} hat sich angemeldet', { name: entry.guest_name || t('starrate', 'Gast') }) }}
                       </template>
+                      <span v-else-if="entry.event === 'message_ack'" :title="entry.message">
+                        {{ t('starrate', '{name} hat die Nachricht bestätigt', { name: entry.guest_name || t('starrate', 'Gast') }) }}
+                      </span>
                       <template v-else>
                         {{ t('starrate', 'Passwort falsch') }}
                       </template>
