@@ -491,6 +491,39 @@ body#body-public .guest-box {
   box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,0.5) !important;
 }
 
+/* ── Nachricht an den Gast: Briefumschlag + Dialog-Button ─────────────────── */
+/* Gleiches NC-Problem wie in der Filterleiste: NC färbt Buttons bei :hover/   */
+/* :focus hell ein und legt bei Tastatur-Fokus seinen Doppelring an.          */
+:is(#starrate-root, #starrate-guest-root) .sr-breadcrumb__guest-message:is(:hover, :focus, :active) {
+  background: #2a2a3e !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-breadcrumb__guest-message:focus:not(:hover) {
+  border-color: #3f3f5a !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-guest-message__btn:is(:hover, :focus, :active) {
+  background: #e94560 !important;
+  border: none !important;
+  color: #fff !important;
+}
+@media (pointer: fine) {
+  :is(#starrate-root, #starrate-guest-root) .sr-guest-message__btn:hover {
+    background: #d63a54 !important;
+  }
+}
+:is(#starrate-root, #starrate-guest-root) :is(.sr-breadcrumb__guest-message, .sr-guest-message__btn):focus-visible {
+  outline: 2px solid var(--sr-accent) !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+/* Der Dialog selbst nimmt beim Öffnen den Fokus (tabindex=-1) — kein Ring um die ganze Karte */
+:is(#starrate-root, #starrate-guest-root) .sr-guest-message:focus-visible {
+  outline: none !important;
+}
+:is(#starrate-root, #starrate-guest-root) .sr-breadcrumb__guest-message:focus-visible {
+  border-color: #5a5a8a !important;
+  color: #fff !important;
+}
+
 /* ── Komponenten-Buttons: NC-Override mit :is(#starrate-root, #starrate-guest-root) Präfix ───────────── */
 /* NC-Selektoren wie "#app-content button" haben Spezifizität (1,0,1).         */
 /* Mit :is(#starrate-root, #starrate-guest-root) Klassen-Präfix haben wir (1,1,0) – das schlägt NC.       */

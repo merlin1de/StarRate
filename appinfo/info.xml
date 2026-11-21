@@ -33,7 +33,7 @@ Rate photos with 1–5 stars and color labels, flag picks and rejects with keybo
 - Comments on individual images — for client feedback rounds or personal notes, optional in guest galleries
 - Export the rating list as CSV (filename, stars, color, pick/reject) — download or copy to clipboard
 - Download original images — a single image from the loupe, or the whole selection as a ZIP; available to logged-in users and, per share, to guests
-- Guest share links for clients and models (no Nextcloud login required), with optional password, expiry, and per-share permissions (rate / pick / download / export / comments / recursive)
+- Guest share links for clients and models (no Nextcloud login required), with optional password, expiry, a message for the guest, and per-share permissions (rate / pick / download / export / comments / recursive)
 - Keyboard shortcuts like Lightroom: 0–5 stars, 6–9 colors, P/X pick/reject, S slideshow
 - Batch rating and batch pick/reject with Shift+click / Ctrl+click / Ctrl+A
 - Combinable filters: stars, color, Pick/Reject, unrated
@@ -69,7 +69,7 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
 - Kommentare zu einzelnen Bildern — für Kundenfeedback oder persönliche Notizen, optional in Gast-Galerien
 - Bewertungsliste als CSV exportieren (Dateiname, Sterne, Farbe, Pick/Reject) — herunterladen oder in die Zwischenablage
 - Original-Bilder herunterladen — Einzelbild aus der Loupe oder die ganze Auswahl als ZIP; für eingeloggte User und, pro Share, für Gäste
-- Gast-Links für Kunden und Models (kein Nextcloud-Login nötig), mit optionalem Passwort, Ablaufdatum und pro-Share-Berechtigungen (Bewerten / Pick / Download / Export / Kommentare / Rekursiv)
+- Gast-Links für Kunden und Models (kein Nextcloud-Login nötig), mit optionalem Passwort, Ablaufdatum, Nachricht an den Gast und pro-Share-Berechtigungen (Bewerten / Pick / Download / Export / Kommentare / Rekursiv)
 - Tastaturkürzel wie Lightroom: 0–5 Sterne, 6–9 Farben, P/X Pick/Reject, S Diashow
 - Batch-Bewertung und Batch Pick/Reject mit Shift+Klick / Strg+Klick / Strg+A
 - Kombinierbare Filter: Sterne, Farbe, Pick/Reject, unbewertet

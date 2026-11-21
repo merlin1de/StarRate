@@ -140,16 +140,22 @@ async function closeMessage() {
   // Sofort im Speicher merken, damit ein Ordnerwechsel den Dialog nicht neu öffnet.
   // Dauerhaft erst bei Erfolg: sonst fehlte die Bestätigung im Log des Owners,
   // und beim nächsten Besuch wird sie stattdessen erneut abgefragt.
+  // 409 = Owner hat den Text inzwischen geändert: der neue erscheint beim nächsten Laden.
   seenMessage.value = message
   try {
     await axios.post(
       generateUrl(`/apps/starrate/api/guest/${props.token}/message/ack`),
-      {},
+      { message },
       { headers: pwHeader() },
     )
     localStorage.setItem(MESSAGE_STORAGE_KEY, message)
   } catch (e) {
-    if (e?.response?.status === 401) handle401()
+    if (e?.response?.status === 401) {
+      // Nach dem erneuten Passwort soll die Nachricht wieder kommen, sonst
+      // fehlte die Bestätigung bis zum nächsten Besuch im Log
+      seenMessage.value = localStorage.getItem(MESSAGE_STORAGE_KEY)
+      handle401()
+    }
   }
 }
 

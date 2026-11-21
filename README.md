@@ -88,10 +88,10 @@ Rate in Nextcloud → open in Lightroom → stars are already there.
 
 1. Open a folder in StarRate → click **Share**
 2. Set permission to **View + Rate** or **View only**
-3. Optionally: add a password, expiry date, and minimum star filter
+3. Optionally: add a password, expiry date, minimum star filter, and a message for the guest (e.g. "for culling only, please don't post")
 4. Copy the link → send to your client or model
 
-Guests can rate images in their browser — **no Nextcloud account required**. The photographer sees all guest ratings in real time. Optionally, enable comments so guests can leave per-photo notes.
+Guests can rate images in their browser — **no Nextcloud account required**. The photographer sees all guest ratings in real time. Optionally, enable comments so guests can leave per-photo notes. A message is shown when the guest opens the gallery; the share log records when they acknowledged it.
 
 ---
 

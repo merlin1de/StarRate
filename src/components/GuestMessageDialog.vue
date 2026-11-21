@@ -69,7 +69,12 @@ function onKeydown(e) {
   }
 }
 
+// Fokus beim Schließen dorthin zurück, wo er vorher war (z.B. der Briefumschlag
+// beim erneuten Öffnen) — sonst landet er auf <body>.
+let returnFocusEl = null
+
 onMounted(() => {
+  returnFocusEl = document.activeElement
   document.addEventListener('keydown', onKeydown, true)
   // Fokus auf den Dialog, NICHT auf den Button: sonst bestätigt ein Enter, das noch
   // unterwegs ist (z.B. vom Passwortfeld), die Nachricht, bevor sie gelesen wurde.
@@ -78,6 +83,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown, true)
+  if (returnFocusEl?.isConnected && returnFocusEl !== document.body) {
+    returnFocusEl.focus({ preventScroll: true })
+  }
 })
 </script>
 
@@ -133,8 +141,5 @@ onBeforeUnmount(() => {
   font-size: 0.9rem;
   padding: 0.5rem 1.25rem;
 }
-.sr-guest-message__btn:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
+/* Hover/Fokus: css/starrate.css (NC-Button-Stil braucht den ID-Präfix) */
 </style>

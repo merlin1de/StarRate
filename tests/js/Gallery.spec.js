@@ -368,6 +368,19 @@ describe('Gallery – Gast-Nachricht im Header', () => {
     expect(w.emitted('open-guest-message')).toHaveLength(1)
   })
 
+  it('ESC bei offener Gast-Nachricht bleibt beim Dialog (räumt nichts in der Galerie)', async () => {
+    const { w } = factory({ allowExport: true })
+    await flushPromises()
+    await w.find('[title="Bewertungsliste exportieren"]').trigger('click')
+    const msg = document.createElement('div')
+    msg.className = 'sr-guest-message'
+    document.body.appendChild(msg)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await w.vm.$nextTick()
+    expect(w.find('.export-modal-stub').exists()).toBe(true)
+    msg.remove()
+  })
+
   it('zeigt ohne Nachricht keinen Button', async () => {
     const { w } = factory()
     await flushPromises()

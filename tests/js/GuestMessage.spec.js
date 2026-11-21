@@ -70,7 +70,7 @@ describe('GuestGallery – Nachricht an den Gast', () => {
 
     expect(axios.post).toHaveBeenCalledWith(
       expect.stringContaining(`/guest/${TOKEN}/message/ack`),
-      {},
+      { message: 'Nur zur Auswahl' },
       expect.any(Object),
     )
     expect(localStorage.getItem(STORAGE_KEY)).toBe('Nur zur Auswahl')
@@ -120,6 +120,34 @@ describe('GuestGallery – Nachricht an den Gast', () => {
     await load(wrapper, 'Nur zur Auswahl')
     expect(dialog(wrapper).exists()).toBe(false)
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('401 beim Bestätigen: nach dem Passwort erscheint die Nachricht wieder', async () => {
+    axios.post.mockRejectedValue({ response: { status: 401 } })
+    await load(wrapper, 'Nur zur Auswahl')
+    await wrapper.find('.sr-guest-message__btn').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.sr-guest-pw__overlay').exists()).toBe(true)
+
+    // Passwort erneut eingegeben → Bilder laden wieder
+    axios.post.mockResolvedValue({ data: { ok: true, pw_token: 'pw' } })
+    await wrapper.find('.sr-guest-pw__input').setValue('geheim')
+    await wrapper.find('.sr-guest-pw__btn').trigger('click')
+    await flushPromises()
+    await load(wrapper, 'Nur zur Auswahl')
+    expect(dialog(wrapper).exists()).toBe(true)
+    expect(dialog(wrapper).props().dismissible).toBe(false)
+  })
+
+  it('409 (Text inzwischen geändert): nicht dauerhaft gemerkt, neuer Text erscheint beim nächsten Laden', async () => {
+    axios.post.mockRejectedValue({ response: { status: 409 } })
+    await load(wrapper, 'Alter Text')
+    await wrapper.find('.sr-guest-message__btn').trigger('click')
+    await flushPromises()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+
+    await load(wrapper, 'Neuer Text')
+    expect(dialog(wrapper).props().message).toBe('Neuer Text')
   })
 
   it('entfernte Nachricht: gleicher Text später gilt wieder als neu', async () => {
@@ -199,6 +227,17 @@ describe('GuestMessageDialog', () => {
     await w.find('.sr-guest-message__overlay').trigger('click')
     expect(w.emitted('close')).toBeUndefined()
     w.unmount()
+  })
+
+  it('gibt den Fokus beim Schließen an das vorher fokussierte Element zurück', () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const w = mountDialog({ dismissible: true })
+    expect(document.activeElement).not.toBe(opener)
+    w.unmount()
+    expect(document.activeElement).toBe(opener)
+    opener.remove()
   })
 
   it('erneutes Öffnen: Escape und Klick daneben schließen', async () => {

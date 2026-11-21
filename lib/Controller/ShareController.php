@@ -556,6 +556,10 @@ class ShareController extends Controller
     /**
      * POST /api/guest/{token}/message/ack — Gast bestätigt die Nachricht.
      *
+     * Body: { "message": "<angezeigter Text>" }. Hat der Owner den Text inzwischen
+     * geändert, gilt die Bestätigung nicht (409) — geloggt wird nur, was der Gast
+     * tatsächlich gesehen hat; der neue Text erscheint ihm beim nächsten Laden.
+     *
      * Pro Session und Nachrichtentext nur ein Log-Eintrag: das Log ist auf 500
      * Einträge begrenzt, wiederholte Requests dürfen keine Bewertungen verdrängen.
      */
@@ -575,6 +579,10 @@ class ShareController extends Controller
         $message = $share['guest_message'] ?? null;
         if ($message === null || $message === '') {
             return new DataResponse(['error' => 'No message'], Http::STATUS_NOT_FOUND);
+        }
+        $shown = $this->getJsonBody()['message'] ?? null;
+        if (!is_string($shown) || $shown !== $message) {
+            return new DataResponse(['error' => 'Message changed'], Http::STATUS_CONFLICT);
         }
 
         $sessionKey = "starrate_share_{$token}_ack_" . hash('sha256', $message);
@@ -750,7 +758,7 @@ class ShareController extends Controller
         if (array_key_exists('guest_message', $body) && $body['guest_message'] !== null) {
             if (!is_string($body['guest_message'])) {
                 $errors[] = 'guest_message muss ein Text sein';
-            } elseif (mb_strlen(trim(str_replace("\r\n", "\n", $body['guest_message']))) > ShareService::GUEST_MESSAGE_MAX_LENGTH) {
+            } elseif (mb_strlen(ShareService::cleanGuestMessage($body['guest_message'])) > ShareService::GUEST_MESSAGE_MAX_LENGTH) {
                 $errors[] = 'guest_message darf höchstens ' . ShareService::GUEST_MESSAGE_MAX_LENGTH . ' Zeichen lang sein';
             }
         }

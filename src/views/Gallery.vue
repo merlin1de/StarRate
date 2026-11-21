@@ -972,8 +972,8 @@ function onAppKeydown(e) {
 // .sr-app greift dort nicht, deshalb reicht nur onAppKeydown nicht aus.
 function onDocKeydown(e) {
   if (e.key !== 'Escape') return
-  // FolderPopover schließt sich selbst — nicht zusätzlich Selektion räumen
-  if (document.querySelector('.sr-folder-popover__menu')) return
+  // FolderPopover / Gast-Nachricht schließen sich selbst — nicht zusätzlich Selektion räumen
+  if (document.querySelector('.sr-folder-popover__menu, .sr-guest-message')) return
   const stop = () => { e.preventDefault(); e.stopPropagation() }
   if (showExportModal.value)      { showExportModal.value = false; try { document.activeElement?.blur() } catch { /* ignore */ } stop(); return }
   if (showShareModal.value)       { showShareModal.value = false; try { document.activeElement?.blur() } catch { /* ignore */ } stop(); return }
@@ -1247,7 +1247,9 @@ watch(() => route.query, q => {
   padding: 0;
   width: 28px;
 }
-.sr-breadcrumb__guest-message:hover { color: #fff; }
+@media (pointer: fine) {
+  .sr-breadcrumb__guest-message:hover { border-color: #5a5a8a; color: #fff; }
+}
 .sr-breadcrumb__guest-message svg { height: 15px; width: 15px; }
 
 .sr-breadcrumb__guest-label {

@@ -141,6 +141,7 @@ class ShareControllerGuestMessageTest extends TestCase
     public function testAcknowledgeWritesOneLogEntryPerSession(): void
     {
         $this->givenShare();
+        $this->givenBody(['message' => self::MESSAGE]);
         $this->shareService->expects($this->once())->method('appendMessageAckToLog');
 
         $this->assertSame(Http::STATUS_OK, $this->controller->guestAcknowledgeMessage(self::TOKEN)->getStatus());
@@ -153,10 +154,37 @@ class ShareControllerGuestMessageTest extends TestCase
             $this->share(),
             $this->share(['guest_message' => 'Pick your top 10.']),
         );
+        $this->request->method('getParams')->willReturnOnConsecutiveCalls(
+            ['message' => self::MESSAGE],
+            ['message' => 'Pick your top 10.'],
+        );
         $this->shareService->expects($this->exactly(2))->method('appendMessageAckToLog');
 
         $this->controller->guestAcknowledgeMessage(self::TOKEN);
         $this->controller->guestAcknowledgeMessage(self::TOKEN);
+    }
+
+    public function testAcknowledgeOfOutdatedTextIsRejectedAndNotLogged(): void
+    {
+        // Owner hat den Text geändert, während der Dialog beim Gast offen war
+        $this->givenShare(['guest_message' => 'Pick your top 10.']);
+        $this->givenBody(['message' => self::MESSAGE]);
+        $this->shareService->expects($this->never())->method('appendMessageAckToLog');
+
+        $response = $this->controller->guestAcknowledgeMessage(self::TOKEN);
+
+        $this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+        // Die spätere Bestätigung des neuen Texts darf nicht schon „verbraucht“ sein
+        $this->assertSame([], array_filter(array_keys($this->sessionData), fn($k) => str_contains($k, '_ack_')));
+    }
+
+    public function testAcknowledgeWithoutShownTextIsRejected(): void
+    {
+        $this->givenShare();
+        $this->givenBody([]);
+        $this->shareService->expects($this->never())->method('appendMessageAckToLog');
+
+        $this->assertSame(Http::STATUS_CONFLICT, $this->controller->guestAcknowledgeMessage(self::TOKEN)->getStatus());
     }
 
     public function testAcknowledgeRequiresPassword(): void
@@ -199,6 +227,18 @@ class ShareControllerGuestMessageTest extends TestCase
         $this->shareService->expects($this->never())->method('createShare');
 
         $this->assertSame(Http::STATUS_UNPROCESSABLE_ENTITY, $this->controller->create()->getStatus());
+    }
+
+    public function testCreateCountsLengthAfterCleaning(): void
+    {
+        // Steuerzeichen werden beim Speichern entfernt — sie zählen nicht zum Limit
+        $this->givenBody([
+            'nc_path'       => '/Fotos',
+            'guest_message' => str_repeat('x', ShareService::GUEST_MESSAGE_MAX_LENGTH) . str_repeat("\x07", 5) . "\r\n",
+        ]);
+        $this->shareService->method('createShare')->willReturn($this->share());
+
+        $this->assertSame(Http::STATUS_CREATED, $this->controller->create()->getStatus());
     }
 
     public function testCreateCountsMultibyteCharactersNotBytes(): void
