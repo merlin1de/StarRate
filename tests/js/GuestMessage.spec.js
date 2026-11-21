@@ -139,15 +139,37 @@ describe('GuestGallery – Nachricht an den Gast', () => {
     expect(dialog(wrapper).props().dismissible).toBe(false)
   })
 
-  it('409 (Text inzwischen geändert): nicht dauerhaft gemerkt, neuer Text erscheint beim nächsten Laden', async () => {
-    axios.post.mockRejectedValue({ response: { status: 409 } })
+  it('409 (Owner hat den Text geändert): neuer Text erscheint sofort mit Hinweis', async () => {
+    axios.post.mockRejectedValueOnce({ response: { status: 409, data: { guest_message: 'Neuer Text' } } })
     await load(wrapper, 'Alter Text')
     await wrapper.find('.sr-guest-message__btn').trigger('click')
     await flushPromises()
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
 
-    await load(wrapper, 'Neuer Text')
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
     expect(dialog(wrapper).props().message).toBe('Neuer Text')
+    expect(dialog(wrapper).props().dismissible).toBe(false)
+    expect(wrapper.find('.sr-guest-message__notice').exists()).toBe(true)
+
+    // Bestätigen des neuen Texts: Ack mit dem neuen Text, Hinweis weg
+    axios.post.mockResolvedValueOnce({ data: { ok: true } })
+    await wrapper.find('.sr-guest-message__btn').trigger('click')
+    await flushPromises()
+    expect(axios.post).toHaveBeenLastCalledWith(expect.any(String), { message: 'Neuer Text' }, expect.any(Object))
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('Neuer Text')
+    expect(dialog(wrapper).exists()).toBe(false)
+
+    wrapper.findComponent(GalleryStub).vm.$emit('open-guest-message')
+    await flushPromises()
+    expect(wrapper.find('.sr-guest-message__notice').exists()).toBe(false)
+  })
+
+  it('404 (Owner hat die Nachricht entfernt): Dialog und Briefumschlag verschwinden', async () => {
+    axios.post.mockRejectedValueOnce({ response: { status: 404 } })
+    await load(wrapper, 'Nur zur Auswahl')
+    await wrapper.find('.sr-guest-message__btn').trigger('click')
+    await flushPromises()
+    expect(dialog(wrapper).exists()).toBe(false)
+    expect(wrapper.findComponent(GalleryStub).props().hasGuestMessage).toBe(false)
   })
 
   it('entfernte Nachricht: gleicher Text später gilt wieder als neu', async () => {

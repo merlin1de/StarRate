@@ -12,6 +12,9 @@
       <h2 id="sr-guest-message-title" class="sr-guest-message__title">
         {{ t('starrate', 'Nachricht zu dieser Galerie') }}
       </h2>
+      <p v-if="updated" class="sr-guest-message__notice">
+        {{ t('starrate', 'Die Nachricht wurde gerade aktualisiert.') }}
+      </p>
       <!-- Klartext: Interpolation, nie v-html. Umbrüche per white-space: pre-wrap. -->
       <p id="sr-guest-message-text" class="sr-guest-message__text">{{ message }}</p>
       <div class="sr-guest-message__actions">
@@ -32,6 +35,8 @@ const props = defineProps({
   // false beim ersten Anzeigen: nur der Button schließt (und bestätigt).
   // true beim erneuten Öffnen: auch Escape und Klick daneben.
   dismissible: { type: Boolean, default: false },
+  // Owner hat den Text geändert, während der Gast den alten gelesen hat
+  updated:     { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['close'])
@@ -115,6 +120,12 @@ onBeforeUnmount(() => {
 .sr-guest-message__title {
   color: #fff;
   font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+}
+.sr-guest-message__notice {
+  color: #e94560;
+  font-size: 0.85rem;
   font-weight: 600;
   margin: 0;
 }

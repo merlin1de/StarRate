@@ -335,7 +335,8 @@ OC.L10N.register(
         "Nachricht anzeigen" : "Show message",
         "Nachricht zu dieser Galerie" : "A note about this gallery",
         "Verstanden" : "Got it",
-        "{name} hat die Nachricht bestätigt" : "{name} acknowledged the message"
+        "{name} hat die Nachricht bestätigt" : "{name} acknowledged the message",
+        "Die Nachricht wurde gerade aktualisiert." : "This message was just updated."
     },
     "nplurals=2; plural=(n != 1);"
 );

@@ -174,6 +174,8 @@ class ShareControllerGuestMessageTest extends TestCase
         $response = $this->controller->guestAcknowledgeMessage(self::TOKEN);
 
         $this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+        // Aktueller Text kommt mit, damit der Dialog ihn sofort zeigen kann
+        $this->assertSame('Pick your top 10.', $response->getData()['guest_message']);
         // Die spätere Bestätigung des neuen Texts darf nicht schon „verbraucht“ sein
         $this->assertSame([], array_filter(array_keys($this->sessionData), fn($k) => str_contains($k, '_ack_')));
     }

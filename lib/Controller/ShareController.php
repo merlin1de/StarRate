@@ -557,8 +557,9 @@ class ShareController extends Controller
      * POST /api/guest/{token}/message/ack — Gast bestätigt die Nachricht.
      *
      * Body: { "message": "<angezeigter Text>" }. Hat der Owner den Text inzwischen
-     * geändert, gilt die Bestätigung nicht (409) — geloggt wird nur, was der Gast
-     * tatsächlich gesehen hat; der neue Text erscheint ihm beim nächsten Laden.
+     * geändert, gilt die Bestätigung nicht: 409 mit dem aktuellen Text, den der
+     * Dialog sofort anzeigt. Geloggt wird nur, was der Gast tatsächlich bestätigt.
+     * Die Passwortprüfung ist hier schon durch — der Text darf mit.
      *
      * Pro Session und Nachrichtentext nur ein Log-Eintrag: das Log ist auf 500
      * Einträge begrenzt, wiederholte Requests dürfen keine Bewertungen verdrängen.
@@ -582,7 +583,7 @@ class ShareController extends Controller
         }
         $shown = $this->getJsonBody()['message'] ?? null;
         if (!is_string($shown) || $shown !== $message) {
-            return new DataResponse(['error' => 'Message changed'], Http::STATUS_CONFLICT);
+            return new DataResponse(['error' => 'Message changed', 'guest_message' => $message], Http::STATUS_CONFLICT);
         }
 
         $sessionKey = "starrate_share_{$token}_ack_" . hash('sha256', $message);

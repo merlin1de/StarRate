@@ -262,7 +262,8 @@ OC.L10N.register(
         "Nachricht anzeigen" : "Nachricht anzeigen",
         "Nachricht zu dieser Galerie" : "Nachricht zu dieser Galerie",
         "Verstanden" : "Verstanden",
-        "{name} hat die Nachricht bestätigt" : "{name} hat die Nachricht bestätigt"
+        "{name} hat die Nachricht bestätigt" : "{name} hat die Nachricht bestätigt",
+        "Die Nachricht wurde gerade aktualisiert." : "Die Nachricht wurde gerade aktualisiert."
     },
     "nplurals=2; plural=(n != 1);"
 );

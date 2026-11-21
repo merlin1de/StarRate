@@ -54,6 +54,7 @@
     v-if="messageOpen && !passwordDlg && guestMessage"
     :message="guestMessage"
     :dismissible="guestMessage === seenMessage"
+    :updated="messageUpdated"
     @close="closeMessage"
   />
 </template>
@@ -120,6 +121,7 @@ const MESSAGE_STORAGE_KEY = `sr_guest_message_${props.token}`
 const guestMessage = ref(null)
 const messageOpen  = ref(false)
 const seenMessage  = ref(localStorage.getItem(MESSAGE_STORAGE_KEY))
+const messageUpdated = ref(false)
 
 function syncGuestMessage(message) {
   guestMessage.value = message || null
@@ -133,14 +135,14 @@ function syncGuestMessage(message) {
 }
 
 async function closeMessage() {
-  messageOpen.value = false
+  messageOpen.value    = false
+  messageUpdated.value = false
   const message = guestMessage.value
   if (message === seenMessage.value) return
 
   // Sofort im Speicher merken, damit ein Ordnerwechsel den Dialog nicht neu öffnet.
   // Dauerhaft erst bei Erfolg: sonst fehlte die Bestätigung im Log des Owners,
   // und beim nächsten Besuch wird sie stattdessen erneut abgefragt.
-  // 409 = Owner hat den Text inzwischen geändert: der neue erscheint beim nächsten Laden.
   seenMessage.value = message
   try {
     await axios.post(
@@ -150,11 +152,20 @@ async function closeMessage() {
     )
     localStorage.setItem(MESSAGE_STORAGE_KEY, message)
   } catch (e) {
-    if (e?.response?.status === 401) {
+    const status = e?.response?.status
+    if (status === 401) {
       // Nach dem erneuten Passwort soll die Nachricht wieder kommen, sonst
       // fehlte die Bestätigung bis zum nächsten Besuch im Log
       seenMessage.value = localStorage.getItem(MESSAGE_STORAGE_KEY)
       handle401()
+    } else if (status === 409) {
+      // Owner hat den Text geändert, während der Gast den alten las: den neuen
+      // gleich zeigen und bestätigen lassen (der alte wird nicht geloggt)
+      messageUpdated.value = true
+      syncGuestMessage(e.response.data?.guest_message ?? null)
+    } else if (status === 404) {
+      // Owner hat die Nachricht inzwischen entfernt
+      syncGuestMessage(null)
     }
   }
 }
