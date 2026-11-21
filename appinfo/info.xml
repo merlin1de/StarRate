@@ -94,6 +94,10 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
     <bugs>https://github.com/merlin1de/starrate/issues</bugs>
     <repository type="git">https://github.com/merlin1de/starrate</repository>
 
+    <!-- Der App Store akzeptiert hier nur PeerTube-URLs (kein YouTube) und prüft
+         sie nur beim Stable-Upload; Nightlies übernehmen keine Store-Metadaten. -->
+    <video>https://makertube.net/w/1vaN35PrevEbJZW7eUGpFn</video>
+
     <!-- ?v=N: Der Store-Bildproxy (usercontent.apps.nextcloud.com) cacht jede URL
          dauerhaft. Nach neuen Aufnahmen N hochzählen, sonst zeigt der Store die alten Bilder. -->
     <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-grid.jpg?v=2</screenshot>
