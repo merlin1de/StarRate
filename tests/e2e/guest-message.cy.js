@@ -21,7 +21,9 @@ const updateShare = (token, body) => ownerReq('PUT', `${API}/share/${token}`, bo
 const acks = (token) => ownerReq('GET', `${API}/share/${token}/log`)
   .then(r => r.body.log.filter(e => e.event === 'message_ack'))
 
-const guestImages = (token) => cy.request(`${API}/guest/${token}/images`).its('body.images')
+// Bewertungen über die Owner-API lesen: die Gast-API ist auf 30 Aufrufe/min
+// begrenzt, und die Gast-Specs davor verbrauchen davon schon einiges
+const ownerImages = () => ownerReq('GET', `${API}/images?path=${encodeURIComponent(TEST_FOLDER)}`).its('body.images')
 const guestRate = (token, fileId, rating) => cy.request({
   method: 'POST',
   url: `${API}/guest/${token}/rate`,
@@ -170,7 +172,7 @@ describe('Guest Gallery – Nachricht an den Gast', () => {
     createShare({ guest_name: 'Msg-Keys', guest_message: MSG, permissions: 'rate' }).then(s => {
       token = s.token
       // Ausgangslage: die ersten beiden Bilder auf 1 Stern
-      guestImages(token).then(imgs => {
+      ownerImages().then(imgs => {
         const ids = [imgs[0].id, imgs[1].id]
         ids.forEach(id => guestRate(token, id, 1))
 
@@ -193,14 +195,14 @@ describe('Guest Gallery – Nachricht an den Gast', () => {
         cy.get('.sr-grid__item--selected').should('have.length', 2)
 
         cy.wait(2500) // Batch-Bewertung hat 2 s Debounce
-        guestImages(token).then(after => {
+        ownerImages().then(after => {
           ids.forEach(id => expect(after.find(i => i.id === id).rating, `Bild ${id}`).to.equal(1))
         })
 
         // Gegenprobe ohne Dialog: dieselbe Taste bewertet die Auswahl
         cy.get('.sr-grid').first().trigger('keydown', { key: '3', bubbles: true })
         cy.wait(2500)
-        guestImages(token).then(after => {
+        ownerImages().then(after => {
           ids.forEach(id => expect(after.find(i => i.id === id).rating, `Bild ${id}`).to.equal(3))
         })
       })
