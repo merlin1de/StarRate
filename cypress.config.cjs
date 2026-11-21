@@ -9,6 +9,7 @@ module.exports = {
       'tests/e2e/batch-selection.cy.js',
       'tests/e2e/guest-gallery.cy.js',
       'tests/e2e/guest-sort.cy.js',
+      'tests/e2e/guest-message.cy.js',
       'tests/e2e/loupe-navigation.cy.js',
       'tests/e2e/navigation.cy.js',
       'tests/e2e/pick-reject.cy.js',

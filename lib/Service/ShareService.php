@@ -272,10 +272,20 @@ class ShareService
         if ($message === null) {
             return null;
         }
+        $message = mb_substr(self::cleanGuestMessage($message), 0, self::GUEST_MESSAGE_MAX_LENGTH);
+        return $message === '' ? null : $message;
+    }
+
+    /**
+     * Zeilenumbrüche vereinheitlichen, Steuerzeichen und Rand-Whitespace weg —
+     * ohne Kürzen. Die Längenprüfung im Controller zählt auf genau diesem Text,
+     * damit sie nichts ablehnt, was nach dem Bereinigen ins Limit passt.
+     */
+    public static function cleanGuestMessage(string $message): string
+    {
         $message = str_replace(["\r\n", "\r"], "\n", $message);
         $message = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $message) ?? '';
-        $message = mb_substr(trim($message), 0, self::GUEST_MESSAGE_MAX_LENGTH);
-        return $message === '' ? null : $message;
+        return trim($message);
     }
 
     public function isShareValid(array $share): bool
