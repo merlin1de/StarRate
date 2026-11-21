@@ -105,9 +105,9 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
     <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-share.jpg?v=2</screenshot>
     <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-newshare.jpg?v=2</screenshot>
     <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-guest.jpg?v=2</screenshot>
-    <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-mobile-grid.jpg?v=2</screenshot>
-    <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-mobile-guest.jpg?v=2</screenshot>
-    <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-mobile-guest-loupe.jpg?v=2</screenshot>
+    <!-- Hochformat-Screenshots zieht der Store auf volle Breite; deshalb die drei
+         Handy-Ansichten nebeneinander in einem Querformat-Bild (1840x1300 wie die übrigen). -->
+    <screenshot>https://raw.githubusercontent.com/merlin1de/starrate/master/screenshots/starrate-mobile.jpg?v=1</screenshot>
 
     <dependencies>
         <php min-version="8.2" max-version="8.5"/>
