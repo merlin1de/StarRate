@@ -370,9 +370,33 @@ defineExpose({ loadShares })
   border-radius: 12px;
   width: min(680px, 96vw);
   max-height: calc(100vh - 80px);
-  overflow-y: auto;
+  /* dvh = actually visible height on phones (excludes browser toolbars) */
+  max-height: calc(100dvh - 80px);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Header stays put; only the body scrolls */
+.sr-share-list__items,
+.sr-share-list__loading,
+.sr-share-list__empty {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 600px) {
+  .sr-share-list__overlay {
+    padding-top: 12px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .sr-share-list {
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .sr-share-list__header {
