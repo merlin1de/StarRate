@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\StarRate\Notification;
 
+use OCA\StarRate\AppInfo\Application;
 use OCA\StarRate\Service\GuestActivityNotifier;
 use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
@@ -24,22 +25,22 @@ class Notifier implements INotifier
 
     public function getID(): string
     {
-        return GuestActivityNotifier::APP_ID;
+        return Application::APP_ID;
     }
 
     public function getName(): string
     {
-        return $this->l10nFactory->get(GuestActivityNotifier::APP_ID)->t('StarRate');
+        return $this->l10nFactory->get(Application::APP_ID)->t('StarRate');
     }
 
     public function prepare(INotification $notification, string $languageCode): INotification
     {
-        if ($notification->getApp() !== GuestActivityNotifier::APP_ID
+        if ($notification->getApp() !== Application::APP_ID
             || $notification->getSubject() !== GuestActivityNotifier::SUBJECT) {
             throw new UnknownNotificationException();
         }
 
-        $l      = $this->l10nFactory->get(GuestActivityNotifier::APP_ID, $languageCode);
+        $l      = $this->l10nFactory->get(Application::APP_ID, $languageCode);
         $p      = $notification->getSubjectParameters();
         $guest  = trim((string) ($p['guest'] ?? ''));
         $count  = (int) ($p['count'] ?? 0);
@@ -62,7 +63,7 @@ class Notifier implements INotifier
             : $this->urlGenerator->linkToRouteAbsolute('starrate.gallery.folder', ['path' => ltrim($path, '/')]);
         $notification->setLink($link);
         $notification->setIcon(
-            $this->urlGenerator->getAbsoluteURL($this->urlGenerator->imagePath(GuestActivityNotifier::APP_ID, 'app.svg'))
+            $this->urlGenerator->getAbsoluteURL($this->urlGenerator->imagePath(Application::APP_ID, 'app.svg'))
         );
 
         return $notification;

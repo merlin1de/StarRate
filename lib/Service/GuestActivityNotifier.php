@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\StarRate\Service;
 
+use OCA\StarRate\AppInfo\Application;
 use OCA\StarRate\Settings\UserSettings;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IConfig;
@@ -22,7 +23,6 @@ use Psr\Log\LoggerInterface;
  */
 class GuestActivityNotifier
 {
-    public const APP_ID        = 'starrate';
     public const SUBJECT       = 'guest_rated';
     public const QUIET_SECONDS = 600;
 
@@ -156,7 +156,7 @@ class GuestActivityNotifier
         $folder = $path === '' ? '/' : basename($path);
 
         $n = $this->notificationManager->createNotification();
-        $n->setApp(self::APP_ID)
+        $n->setApp(Application::APP_ID)
             ->setUser($ownerId)
             ->setDateTime(new \DateTime('@' . $pending['last']))
             ->setObject('share', $share['token'] . '/' . $pending['last'])
@@ -174,23 +174,23 @@ class GuestActivityNotifier
      */
     private function enabledSince(int $now): int
     {
-        $since = (int) $this->config->getAppValue(self::APP_ID, self::CONFIG_SINCE, '0');
+        $since = (int) $this->config->getAppValue(Application::APP_ID, self::CONFIG_SINCE, '0');
         if ($since <= 0) {
             $since = $now;
-            $this->config->setAppValue(self::APP_ID, self::CONFIG_SINCE, (string) $since);
+            $this->config->setAppValue(Application::APP_ID, self::CONFIG_SINCE, (string) $since);
         }
         return $since;
     }
 
     private function loadState(string $ownerId): array
     {
-        $raw   = $this->config->getUserValue($ownerId, self::APP_ID, self::CONFIG_STATE, '{}');
+        $raw   = $this->config->getUserValue($ownerId, Application::APP_ID, self::CONFIG_STATE, '{}');
         $state = json_decode($raw, true);
         return is_array($state) ? $state : [];
     }
 
     private function saveState(string $ownerId, array $state): void
     {
-        $this->config->setUserValue($ownerId, self::APP_ID, self::CONFIG_STATE, json_encode($state));
+        $this->config->setUserValue($ownerId, Application::APP_ID, self::CONFIG_STATE, json_encode($state));
     }
 }
