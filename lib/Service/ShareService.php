@@ -595,6 +595,19 @@ class ShareService
     }
 
     /**
+     * Rohes Gast-Log eines Shares in chronologischer Reihenfolge (älteste zuerst).
+     * Ohne Share-Lookup — für Hintergrund-Jobs, die den Owner schon kennen.
+     *
+     * @return array[]
+     */
+    public function getRawGuestLog(string $ownerId, string $token): array
+    {
+        $raw = $this->config->getUserValue($ownerId, self::APP_ID, self::CONFIG_LOG . '_' . $token, '[]');
+        $log = json_decode($raw, true);
+        return is_array($log) ? array_values(array_filter($log, 'is_array')) : [];
+    }
+
+    /**
      * Löscht das gesamte Log eines Shares.
      */
     public function clearGuestLog(string $token): void

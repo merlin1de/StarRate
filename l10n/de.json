@@ -248,7 +248,12 @@
     "Nachricht zu dieser Galerie" : "Nachricht zu dieser Galerie",
     "Verstanden" : "Verstanden",
     "{name} hat die Nachricht bestätigt" : "{name} hat die Nachricht bestätigt",
-    "Die Nachricht wurde gerade aktualisiert." : "Die Nachricht wurde gerade aktualisiert."
+    "Die Nachricht wurde gerade aktualisiert." : "Die Nachricht wurde gerade aktualisiert.",
+    "Ein Gast" : "Ein Gast",
+    "Zeit, die Metadaten zu synchronisieren." : "Zeit, die Metadaten zu synchronisieren.",
+    "Benachrichtigen, wenn Gäste bewertet haben" : "Benachrichtigen, wenn Gäste bewertet haben",
+    "Eine Sammelmeldung pro Gast, sobald er etwa 10 Minuten lang nichts mehr bewertet hat." : "Eine Sammelmeldung pro Gast, sobald er etwa 10 Minuten lang nichts mehr bewertet hat.",
+    "_%1$s hat %n Bild in %2$s bewertet_::_%1$s hat %n Bilder in %2$s bewertet_" : ["%1$s hat %n Bild in %2$s bewertet", "%1$s hat %n Bilder in %2$s bewertet"]
   },
   "pluralForms": "nplurals=2; plural=(n != 1);"
 }

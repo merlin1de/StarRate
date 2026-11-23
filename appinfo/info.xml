@@ -113,6 +113,10 @@ Bilder mit 1–5 Sternen und Farb-Labels bewerten, Picks und Rejects per Tastatu
         <nextcloud min-version="33" max-version="35"/>
     </dependencies>
 
+    <background-jobs>
+        <job>OCA\StarRate\BackgroundJob\GuestActivityNotifyJob</job>
+    </background-jobs>
+
     <repair-steps>
         <install>
             <step>OCA\StarRate\Migration\RegisterRawMimeTypes</step>
