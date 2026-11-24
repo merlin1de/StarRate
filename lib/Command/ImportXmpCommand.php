@@ -19,7 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * occ starrate:import-xmp <nc-path> [--user=<uid>] [--dry-run] [--overwrite] [--recursive]
  *
- * Liest xmp:Rating und xmp:Label aus JPEG-Dateien und schreibt sie
+ * Liest xmp:Rating, xmp:Label und xmpDM:pick aus JPEG-Dateien und schreibt sie
  * in die StarRate Collaborative Tags-Datenbank.
  *
  * Typischer Anwendungsfall: einmaliger Import einer bestehenden
@@ -154,7 +154,7 @@ class ImportXmpCommand extends Command
             try {
                 $xmp = $this->exifService->readMetadata($file);
 
-                if ($xmp['rating'] === 0 && $xmp['label'] === null) {
+                if ($xmp['rating'] === 0 && $xmp['label'] === null && $xmp['pick'] === 'none') {
                     $counters['noXmp']++;
                     continue;
                 }
@@ -163,14 +163,15 @@ class ImportXmpCommand extends Command
 
                 if (!$overwrite) {
                     $existing = $this->tagService->getMetadata($fileId);
-                    if ($existing['rating'] > 0 || $existing['color'] !== null) {
+                    if ($existing['rating'] > 0 || $existing['color'] !== null || $existing['pick'] !== 'none') {
                         $counters['skipped']++;
                         if ($output->isVerbose()) {
                             $output->writeln(sprintf(
-                                '  skip  %s (already rated: %d★ %s)',
+                                '  skip  %s (already rated: %d★ %s pick=%s)',
                                 $file->getName(),
                                 $existing['rating'],
-                                $existing['color'] ?? '—'
+                                $existing['color'] ?? '—',
+                                $existing['pick']
                             ));
                         }
                         continue;
@@ -178,14 +179,16 @@ class ImportXmpCommand extends Command
                 }
 
                 $label = $xmp['label'] ?? null;
+                $pick  = $xmp['pick'];
 
                 if ($dryRun) {
                     if ($output->isVerbose()) {
                         $output->writeln(sprintf(
-                            '  <info>import</info> %s  rating=%d  label=%s',
+                            '  <info>import</info> %s  rating=%d  label=%s  pick=%s',
                             $file->getName(),
                             $xmp['rating'],
-                            $label ?? '—'
+                            $label ?? '—',
+                            $pick
                         ));
                     }
                     $counters['imported']++;
@@ -195,14 +198,16 @@ class ImportXmpCommand extends Command
                 $this->tagService->setMetadata($fileId, [
                     'rating' => $xmp['rating'],
                     'color'  => $label,
+                    'pick'   => $pick,
                 ]);
 
                 if ($output->isVerbose()) {
                     $output->writeln(sprintf(
-                        '  <info>import</info> %s  rating=%d  label=%s',
+                        '  <info>import</info> %s  rating=%d  label=%s  pick=%s',
                         $file->getName(),
                         $xmp['rating'],
-                        $label ?? '—'
+                        $label ?? '—',
+                        $pick
                     ));
                 }
                 $counters['imported']++;
