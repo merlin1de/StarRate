@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### EN
+
+**New**
+- **Guest rating notifications** — when someone rates through a share link, you get one summary notification per guest instead of one per click, e.g. "Jane has rated 50 pictures in Shooting-2024 — time to sync the metadata". It is sent once the guest has stopped rating for about 10 minutes; clicking it opens the folder. Comments and logins are not counted, and activity from before the update is not reported. Can be turned off under Personal → StarRate. Needs the Nextcloud Notifications app and background jobs (cron).
+
+### DE
+
+**Neu**
+- **Benachrichtigung bei Gast-Bewertungen** — bewertet jemand über einen Gast-Link, kommt eine Sammelmeldung pro Gast statt einer pro Klick, z. B. „Jane hat 50 Bilder in Shooting-2024 bewertet — Zeit, die Metadaten zu synchronisieren". Sie geht raus, sobald der Gast etwa 10 Minuten lang nichts mehr bewertet hat; ein Klick öffnet den Ordner. Kommentare und Logins zählen nicht, Aktivität vor dem Update wird nicht gemeldet. Abschaltbar unter Persönlich → StarRate. Benötigt die Nextcloud-App „Notifications" und Hintergrund-Jobs (Cron).
+
 ## 1.3.6
 
 ### EN

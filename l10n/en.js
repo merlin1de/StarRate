@@ -336,7 +336,12 @@ OC.L10N.register(
         "Nachricht zu dieser Galerie" : "A note about this gallery",
         "Verstanden" : "Got it",
         "{name} hat die Nachricht bestätigt" : "{name} acknowledged the message",
-        "Die Nachricht wurde gerade aktualisiert." : "This message was just updated."
+        "Die Nachricht wurde gerade aktualisiert." : "This message was just updated.",
+        "Ein Gast" : "A guest",
+        "Zeit, die Metadaten zu synchronisieren." : "Time to sync the metadata.",
+        "Benachrichtigen, wenn Gäste bewertet haben" : "Notify me when guests have rated",
+        "Eine Sammelmeldung pro Gast, sobald er etwa 10 Minuten lang nichts mehr bewertet hat." : "One summary per guest, sent once they have stopped rating for about 10 minutes.",
+        "_%1$s hat %n Bild in %2$s bewertet_::_%1$s hat %n Bilder in %2$s bewertet_" : ["%1$s has rated %n picture in %2$s", "%1$s has rated %n pictures in %2$s"]
     },
     "nplurals=2; plural=(n != 1);"
 );

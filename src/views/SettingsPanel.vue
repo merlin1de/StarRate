@@ -52,6 +52,15 @@
           {{ t('starrate', 'Kommentare aktivieren') }}
         </label>
       </div>
+      <div class="sr-settings__row">
+        <label class="sr-settings__label sr-settings__label--check">
+          <input type="checkbox" v-model="form.notify_guest_activity" @change="autosave" />
+          {{ t('starrate', 'Benachrichtigen, wenn Gäste bewertet haben') }}
+        </label>
+      </div>
+      <p v-if="form.notify_guest_activity" class="sr-settings__hint">
+        {{ t('starrate', 'Eine Sammelmeldung pro Gast, sobald er etwa 10 Minuten lang nichts mehr bewertet hat.') }}
+      </p>
     </div>
 
     <div class="sr-settings__group">
@@ -204,6 +213,7 @@ const DEFAULTS = {
   write_raw_sidecar:         true,
   xmp_label_language:        'en',  // Server-seitig basierend auf User-Locale gesetzt
   comments_enabled:          false,
+  notify_guest_activity:     true,
   recursion_enabled:         false,
   recursive_default:         false,
   recursive_default_depth:   0,
