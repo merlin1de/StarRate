@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### EN
+
+**Bug fixes**
+- **Opening a RAW no longer wipes stars that Lightroom does not know about** — with "Write XMP" and RAW sidecars on, the self-healing read copied stars, colour and flag from the sidecar all at once as soon as it held anything. Lightroom with "Automatically write changes into XMP" saves its catalogue into every sidecar, so a sidecar with a flag but no stars erased guest ratings the next time the photo was opened. The file can now add or change a value but never clear one; clearing a star in Lightroom no longer propagates back (clear it in StarRate instead).
+
+**New**
+- **Write ratings to files** — a "To files" button next to Export compares StarRate's stars, colours and flags with the XMP of every picture in view (RAW sidecars and JPEGs) and writes StarRate's values back where they are missing. Use it when Lightroom has saved over the sidecars before reading them ("Read Metadata from Files" then has nothing to bring in). Shows a preview first; by default it only fills in what is missing from the file and leaves flags alone, "also replace different values" is optional. Values that only exist in the file are never removed.
+- **Guest rating notifications** — when someone rates through a share link, you get one summary notification per guest instead of one per click, e.g. "Jane has rated 50 pictures in Shooting-2024 — time to sync the metadata". It is sent once the guest has stopped rating for about 10 minutes; clicking it opens the folder. Comments and logins are not counted, and activity from before the update is not reported. Can be turned off under Personal → StarRate. Needs the Nextcloud Notifications app and background jobs (cron).
+
+### DE
+
+**Fehlerbehebungen**
+- **Öffnen einer RAW löscht keine Sterne mehr, die Lightroom nicht kennt** — bei aktivem XMP-Schreiben und RAW-Sidecars hat das Self-Healing Sterne, Farbe und Markierung aus dem Sidecar komplett übernommen, sobald es irgendetwas enthielt. Lightroom mit „Änderungen automatisch in XMP speichern“ schreibt seinen Katalogstand in jedes Sidecar; ein Sidecar mit Markierung, aber ohne Sterne hat so Gast-Bewertungen beim nächsten Öffnen gelöscht. Die Datei kann jetzt Werte setzen oder ändern, aber nie löschen; ein in Lightroom entfernter Stern wird nicht mehr zurückübertragen (dafür in StarRate entfernen).
+
+**Neu**
+- **Bewertungen in Dateien schreiben** — der Button „In Dateien“ neben Export vergleicht Sterne, Farben und Markierungen aus StarRate mit dem XMP aller angezeigten Bilder (RAW-Sidecars und JPEGs) und schreibt fehlende StarRate-Werte zurück. Hilft, wenn Lightroom die Sidecars überschrieben hat, bevor es sie gelesen hat („Metadaten aus Datei lesen“ findet dann nichts). Zeigt vorher eine Vorschau; standardmäßig wird nur Fehlendes ergänzt und Markierungen bleiben unangetastet, „auch abweichende Werte ersetzen“ ist optional. Werte, die nur in der Datei stehen, werden nie gelöscht.
+- **Benachrichtigung bei Gast-Bewertungen** — bewertet jemand über einen Gast-Link, kommt eine Sammelmeldung pro Gast statt einer pro Klick, z. B. „Jane hat 50 Bilder in Shooting-2024 bewertet — Zeit, die Metadaten zu synchronisieren". Sie geht raus, sobald der Gast etwa 10 Minuten lang nichts mehr bewertet hat; ein Klick öffnet den Ordner. Kommentare und Logins zählen nicht, Aktivität vor dem Update wird nicht gemeldet. Abschaltbar unter Persönlich → StarRate. Benötigt die Nextcloud-App „Notifications" und Hintergrund-Jobs (Cron).
+
 ## 1.3.6
 
 ### EN

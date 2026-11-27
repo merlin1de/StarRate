@@ -93,6 +93,17 @@ class SidecarService implements XmpStore
         return $this->exifService->readMetadataFromXmp($xmp);
     }
 
+    public function readXmpPacket(File $file): string
+    {
+        $sidecar = $this->findSidecar($file);
+        try {
+            return $sidecar?->getContent() ?? '';
+        } catch (\Exception $e) {
+            $this->logger->warning("StarRate: cannot read sidecar {$sidecar->getName()}: " . $e->getMessage());
+            throw new \RuntimeException('Sidecar not readable', 0, $e);
+        }
+    }
+
     /**
      * Semantik wie ExifService::writeMetadata() (null = unverändert, '' / 'none' = entfernen).
      *

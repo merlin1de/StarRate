@@ -693,10 +693,63 @@ class RatingControllerTest extends TestCase
         $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
         $this->tagService->method('getMetadata')->willReturn(['rating' => 1, 'color' => null, 'pick' => 'none']);
         $this->tagService->expects($this->once())->method('setMetadata')
-            ->with((string) self::FILE_ID, ['rating' => 5, 'color' => 'Green', 'pick' => 'none']);
+            ->with((string) self::FILE_ID, ['rating' => 5, 'color' => 'Green']);
         $this->sidecarService->method('readMetadata')->willReturn(['rating' => 5, 'label' => 'Green', 'pick' => 'none']);
 
         $this->assertSame(5, $this->controller->get(self::FILE_ID)->getData()['rating']);
+    }
+
+    public function testGetNeverErasesStarsFromLightroomSidecar(): void
+    {
+        // Lightroom-Sidecar ohne xmp:Rating/Label, aber mit xmpDM:pick (LR-Katalog
+        // kannte die Gast-Sterne nicht). Darf die 5★ + Farbe in der DB nicht löschen.
+        $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
+        $this->tagService->method('getMetadata')->willReturn(['rating' => 5, 'color' => 'Yellow', 'pick' => 'none']);
+        $this->sidecarService->method('readMetadata')->willReturn(['rating' => 0, 'label' => null, 'pick' => 'pick']);
+        $this->tagService->expects($this->once())->method('setMetadata')
+            ->with((string) self::FILE_ID, ['pick' => 'pick']);
+
+        $data = $this->controller->get(self::FILE_ID)->getData();
+        $this->assertSame(5, $data['rating']);
+        $this->assertSame('Yellow', $data['color']);
+        $this->assertSame('pick', $data['pick']);
+    }
+
+    public function testGetOnJpegKeepsDbPickWhenXmpHasNone(): void
+    {
+        // JPEG (eingebettetes XMP): Rating geändert, Pick fehlt im XMP → DB-Pick bleibt.
+        $this->mockFileById(self::FILE_ID);
+        $this->tagService->method('getMetadata')->willReturn(['rating' => 2, 'color' => null, 'pick' => 'reject']);
+        $this->exifService->method('readMetadata')->willReturn(['rating' => 4, 'label' => null, 'pick' => 'none']);
+        $this->tagService->expects($this->once())->method('setMetadata')
+            ->with((string) self::FILE_ID, ['rating' => 4]);
+
+        $data = $this->controller->get(self::FILE_ID)->getData();
+        $this->assertSame(4, $data['rating']);
+        $this->assertSame('reject', $data['pick']);
+    }
+
+    public function testGetDoesNotWriteWhenXmpOnlyLacksFields(): void
+    {
+        // Sidecar sagt nichts, was die DB nicht schon hat → kein Schreibzugriff.
+        $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
+        $this->tagService->method('getMetadata')->willReturn(['rating' => 5, 'color' => 'Blue', 'pick' => 'pick']);
+        $this->sidecarService->method('readMetadata')->willReturn(['rating' => 0, 'label' => 'Blue', 'pick' => 'pick']);
+        $this->tagService->expects($this->never())->method('setMetadata');
+
+        $this->assertSame(5, $this->controller->get(self::FILE_ID)->getData()['rating']);
+    }
+
+    public function testGetStillAdoptsChangedRatingFromXmp(): void
+    {
+        // Ein im XMP gesetzter, anderer Stern-Wert wird weiterhin übernommen.
+        $this->mockFileById(self::FILE_ID, 'image/x-dcraw');
+        $this->tagService->method('getMetadata')->willReturn(['rating' => 5, 'color' => null, 'pick' => 'none']);
+        $this->sidecarService->method('readMetadata')->willReturn(['rating' => 3, 'label' => null, 'pick' => 'none']);
+        $this->tagService->expects($this->once())->method('setMetadata')
+            ->with((string) self::FILE_ID, ['rating' => 3]);
+
+        $this->controller->get(self::FILE_ID);
     }
 
     public function testDeleteSurvivesSidecarWriteFailure(): void

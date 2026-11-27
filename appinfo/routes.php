@@ -65,6 +65,18 @@ return [
             'verb' => 'DELETE',
         ],
 
+        // ─── In Dateien schreiben (XMP-Sync) ──────────────────────────────────
+        [
+            'name' => 'xmp_sync#preview',
+            'url'  => '/api/xmp-sync/preview',
+            'verb' => 'POST',
+        ],
+        [
+            'name' => 'xmp_sync#apply',
+            'url'  => '/api/xmp-sync/apply',
+            'verb' => 'POST',
+        ],
+
         // ─── Share ────────────────────────────────────────────────────────────
         [
             'name' => 'share#create',

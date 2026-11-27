@@ -436,4 +436,25 @@ XMP;
         ];
     }
 
+
+    // ─── Tests: unreadableFields ─────────────────────────────────────────────
+
+    public function testUnreadableFieldsFlagsValuesWithWhitespace(): void
+    {
+        // parseXmpContent() liest " 3" nicht → darf nicht als „leer" überschrieben werden
+        $this->assertSame(['rating', 'pick'], $this->service->unreadableFields('<d xmp:Rating=" 3" xmpDM:pick=" 1"/>'));
+        $this->assertSame(['rating'], $this->service->unreadableFields("<xmp:Rating>\n4\n</xmp:Rating>"));
+    }
+
+    public function testUnreadableFieldsFlagsCustomLabelNextToKnownColour(): void
+    {
+        $xmp = '<d photoshop:LabelColor="red" xmp:Label="To Print"/>';
+        $this->assertSame('Red', $this->service->parseXmpContent($xmp)['label']);
+        $this->assertSame(['color'], $this->service->unreadableFields($xmp));
+    }
+
+    public function testUnreadableFieldsAcceptsMatchingLabelPair(): void
+    {
+        $this->assertSame([], $this->service->unreadableFields('<d photoshop:LabelColor="red" xmp:Label="Rot" xmp:Rating="4"/>'));
+    }
 }

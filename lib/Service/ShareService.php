@@ -585,13 +585,20 @@ class ShareService
             return [];
         }
 
-        $key = self::CONFIG_LOG . '_' . $token;
-        $raw = $this->config->getUserValue($share['owner_id'], self::APP_ID, $key, '[]');
+        return array_reverse($this->getRawGuestLog($share['owner_id'], $token));  // neueste zuerst
+    }
+
+    /**
+     * Rohes Gast-Log eines Shares in chronologischer Reihenfolge (älteste zuerst).
+     * Ohne Share-Lookup — für Hintergrund-Jobs, die den Owner schon kennen.
+     *
+     * @return array[]
+     */
+    public function getRawGuestLog(string $ownerId, string $token): array
+    {
+        $raw = $this->config->getUserValue($ownerId, self::APP_ID, self::CONFIG_LOG . '_' . $token, '[]');
         $log = json_decode($raw, true);
-        if (!is_array($log)) {
-            return [];
-        }
-        return array_reverse($log);  // neueste zuerst
+        return is_array($log) ? array_values(array_filter($log, 'is_array')) : [];
     }
 
     /**
@@ -914,16 +921,7 @@ class ShareService
         // Share-Reihenfolge statt des Zeitstempels über den Gewinner entscheiden.
         $entries = [];
         foreach (array_keys($this->loadAllShares($ownerId)) as $token) {
-            $raw = $this->config->getUserValue($ownerId, self::APP_ID, self::CONFIG_LOG . '_' . $token, '[]');
-            $log = json_decode($raw, true);
-            if (!is_array($log)) {
-                continue;
-            }
-            foreach ($log as $e) {
-                if (is_array($e)) {
-                    $entries[] = $e;
-                }
-            }
+            array_push($entries, ...$this->getRawGuestLog($ownerId, $token));
         }
         usort($entries, static fn(array $a, array $b): int => ($a['timestamp'] ?? 0) <=> ($b['timestamp'] ?? 0));
 

@@ -6,6 +6,7 @@ namespace OCA\StarRate\AppInfo;
 
 use OCA\StarRate\Listener\NodeDeletedListener;
 use OCA\StarRate\Listener\RawSidecarListener;
+use OCA\StarRate\Notification\Notifier;
 use OCA\StarRate\Preview\RawPreviewProvider;
 use OCA\StarRate\Service\RawPreviewExtractor;
 use OCP\AppFramework\App;
@@ -34,6 +35,8 @@ class Application extends App implements IBootstrap
         // XMP-Sidecars folgen ihrer RAW (Löschen / Umbenennen / Verschieben)
         $context->registerEventListener(NodeDeletedEvent::class, RawSidecarListener::class);
         $context->registerEventListener(NodeRenamedEvent::class, RawSidecarListener::class);
+        // Gesammelte Benachrichtigungen über Gast-Bewertungen
+        $context->registerNotifierService(Notifier::class);
         // RAW-Vorschauen (NEF & Co.) aus dem eingebetteten Kamera-JPEG
         $context->registerPreviewProvider(RawPreviewProvider::class, RawPreviewProvider::MIME_REGEX);
         self::registerRawMimeTypes();

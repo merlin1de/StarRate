@@ -115,6 +115,23 @@ class ExifService implements XmpStore
     }
 
     /**
+     * Rohes XMP-Paket aus dem JPEG-Header ('' wenn keins).
+     */
+    public function readXmpPacket(File $file): string
+    {
+        $handle = $file->fopen('rb');
+        if ($handle === false) {
+            throw new \RuntimeException('File not readable');
+        }
+        $header = stream_get_contents($handle, self::READ_HEADER_SIZE);
+        fclose($handle);
+        if ($header === false || !$this->isJpeg($header)) {
+            return '';
+        }
+        return $this->extractXmpBlock($header) ?? '';
+    }
+
+    /**
      * Liest Metadaten aus rohem JPEG-Inhalt (für Tests und interne Nutzung).
      *
      * @return array{rating: int, label: string|null, pick: string}

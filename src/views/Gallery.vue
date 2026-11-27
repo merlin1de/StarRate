@@ -111,6 +111,7 @@
       :allow-share="!guestMode"
       :allow-export="!guestMode || allowExport"
       :can-export="filteredImages.length > 0"
+      :allow-write-files="!guestMode && settings.write_xmp"
       :can-download="canDownload"
       :selected-count="selectedIds.size"
       :allow-recursive="recursionAvailable"
@@ -119,6 +120,7 @@
       @toggle-mode="toggleMode"
       @open-share-list="showShareList = true"
       @open-export-modal="showExportModal = true"
+      @open-write-files="showWriteFilesModal = true"
       @download-zip="triggerZipDownload"
       @update:recursive="setRecursive"
       @update:depth="setDepth"
@@ -214,6 +216,14 @@
       @close="showExportModal = false"
     />
 
+    <!-- In Dateien schreiben -->
+    <WriteToFilesModal
+      v-if="showWriteFilesModal"
+      :images="filteredImages"
+      :show-pick-col="settings.enable_pick_ui"
+      @close="showWriteFilesModal = false"
+    />
+
     <!-- Shortcut-Hilfe-Modal -->
     <Teleport to="body">
       <Transition name="sr-shortcuts">
@@ -295,6 +305,7 @@ import LoupeView from '../components/LoupeView.vue'
 import ShareModal from '../components/ShareModal.vue'
 import ShareList from '../components/ShareList.vue'
 import ExportModal from '../components/ExportModal.vue'
+import WriteToFilesModal from '../components/WriteToFilesModal.vue'
 import FolderPopover from '../components/FolderPopover.vue'
 import { readFolderState, writeFolderState } from '../utils/folderRecursiveState.js'
 
@@ -377,6 +388,7 @@ const showShareList  = ref(false)
 const showShareModal = ref(false)
 const showShortcuts  = ref(false)
 const showExportModal = ref(false)
+const showWriteFilesModal = ref(false)
 
 const activeFilter = ref({
   minRating: 0,     // 0 = alle  (>=)
@@ -959,7 +971,7 @@ function onShareUpdated() {
 // Nur aktiv wenn ein Modal offen ist — sonst NC Folder-Navigation normal lassen.
 function onAppKeydown(e) {
   if (e.key !== 'Escape') return
-  const modalOpen = showExportModal.value || showShareModal.value
+  const modalOpen = showExportModal.value || showWriteFilesModal.value || showShareModal.value
     || showShareList.value || showShortcuts.value
   if (!modalOpen) return
   e.stopPropagation()
@@ -976,6 +988,8 @@ function onDocKeydown(e) {
   if (document.querySelector('.sr-folder-popover__menu, .sr-guest-message')) return
   const stop = () => { e.preventDefault(); e.stopPropagation() }
   if (showExportModal.value)      { showExportModal.value = false; try { document.activeElement?.blur() } catch { /* ignore */ } stop(); return }
+  // Schließt sich selbst (nicht während des Schreibens) — hier nur Selektion schützen
+  if (showWriteFilesModal.value)  { stop(); return }
   if (showShareModal.value)       { showShareModal.value = false; try { document.activeElement?.blur() } catch { /* ignore */ } stop(); return }
   if (showShareList.value)        { showShareList.value  = false; try { document.activeElement?.blur() } catch { /* ignore */ } stop(); return }
   if (showShortcuts.value)        { showShortcuts.value  = false; stop(); return }
