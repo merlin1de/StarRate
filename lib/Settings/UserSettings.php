@@ -76,6 +76,8 @@ class UserSettings implements ISettings
             // sofort funktionierende LR-DE-Imports bekommen, ohne Setting anzufassen.
             'xmp_label_language'       => $this->get($userId, 'xmp_label_language', $this->defaultLabelLanguage($userId)),
             'comments_enabled'         => $this->getBool($userId, 'comments_enabled', false),
+            // Gesammelte Benachrichtigung, wenn ein Gast über einen Link bewertet hat.
+            'notify_guest_activity'    => $this->getBool($userId, 'notify_guest_activity', true),
             // Recursive-View Defaults — werden beim Folder-Open als initiale
             // Werte verwendet; URL-Params können sie pro View überschreiben.
             // Master-Schalter: deaktiviert das gesamte Recursive-Feature inkl.
@@ -103,6 +105,7 @@ class UserSettings implements ISettings
             'default_sort', 'default_sort_order',
             'show_filename', 'show_rating_overlay',
             'show_color_overlay', 'grid_columns', 'enable_pick_ui', 'write_xmp', 'show_raw', 'write_raw_sidecar', 'comments_enabled',
+            'notify_guest_activity',
             'recursion_enabled', 'recursive_default', 'recursive_default_depth',
             'slideshow_interval',
             'xmp_label_language',
@@ -154,7 +157,7 @@ class UserSettings implements ISettings
             'xmp_label_language' => $this->assertIn($key, $value, XmpService::VALID_LABEL_LANGS),
             'show_filename', 'show_rating_overlay', 'show_color_overlay',
             'enable_pick_ui', 'write_xmp', 'show_raw', 'write_raw_sidecar', 'comments_enabled',
-            'recursion_enabled', 'recursive_default' => null,
+            'notify_guest_activity', 'recursion_enabled', 'recursive_default' => null,
         };
     }
 
