@@ -101,7 +101,7 @@
 
       <!-- Mobile: Teilen/Export ans Ende der Scroll-Zone (selten genutzt, nicht prominent) -->
       <div
-        v-if="allowShare || allowExport"
+        v-if="allowShare || allowExport || allowWriteFiles"
         class="sr-filterbar__actions sr-filterbar__actions--mobile"
       >
         <div class="sr-filterbar__sep" aria-hidden="true" />
@@ -120,6 +120,14 @@
           :title="t('starrate', 'Bewertungsliste exportieren')"
           @click="$emit('open-export-modal')"
         >{{ t('starrate', 'Export') }}</button>
+        <button
+          v-if="allowWriteFiles"
+          class="sr-filterbar__action"
+          type="button"
+          :disabled="!canExport"
+          :title="t('starrate', 'Bewertungen in Dateien schreiben')"
+          @click="$emit('open-write-files')"
+        >{{ t('starrate', 'In Dateien') }}</button>
       </div>
 
     </div>
@@ -167,7 +175,7 @@
            sichtbar). Download nur bei Auswahl — oben rechts, wo der Nutzer ihn
            analog zur Loupe erwartet, NICHT im Rating-Bar (das ist "ändern"). -->
       <div
-        v-if="allowShare || allowExport || (canDownload && selectedCount > 0)"
+        v-if="allowShare || allowExport || allowWriteFiles || (canDownload && selectedCount > 0)"
         class="sr-filterbar__actions sr-filterbar__actions--desktop"
       >
         <button
@@ -185,6 +193,14 @@
           :title="t('starrate', 'Bewertungsliste exportieren')"
           @click="$emit('open-export-modal')"
         >{{ t('starrate', 'Export') }}</button>
+        <button
+          v-if="allowWriteFiles"
+          class="sr-filterbar__action"
+          type="button"
+          :disabled="!canExport"
+          :title="t('starrate', 'Bewertungen in Dateien schreiben')"
+          @click="$emit('open-write-files')"
+        >{{ t('starrate', 'In Dateien') }}</button>
         <button
           v-if="canDownload && selectedCount > 0"
           class="sr-filterbar__action sr-filterbar__action--download"
@@ -323,6 +339,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // „In Dateien schreiben“: nur Owner mit aktivem XMP-Schreiben
+  allowWriteFiles: {
+    type: Boolean,
+    default: false,
+  },
   // Download-Button (Auswahl als ZIP): canDownload gated (eingeloggt/Share),
   // selectedCount > 0 macht ihn sichtbar. Sitzt im Desktop-Cluster (mobil aus).
   canDownload: {
@@ -340,7 +361,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'update:filter', 'toggle-mode', 'open-share-list', 'open-export-modal',
+  'update:filter', 'toggle-mode', 'open-share-list', 'open-export-modal', 'open-write-files',
   'update:recursive', 'update:depth', 'download-zip',
 ])
 

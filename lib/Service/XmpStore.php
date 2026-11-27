@@ -20,6 +20,12 @@ interface XmpStore
     public function readMetadata(File $file): array;
 
     /**
+     * Das rohe XMP-Paket ('' wenn keins) — für Prüfungen, die mehr sehen müssen
+     * als readMetadata() versteht (siehe XmpService::unreadableFields()).
+     */
+    public function readXmpPacket(File $file): string;
+
+    /**
      * null = Feld unverändert lassen, '' (Label) bzw. 'none' (Pick) = entfernen.
      *
      * @throws \RuntimeException wenn nicht geschrieben werden kann
