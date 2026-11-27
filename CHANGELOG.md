@@ -4,10 +4,16 @@
 
 ### EN
 
+**Bug fixes**
+- **Opening a RAW no longer wipes stars that Lightroom does not know about** — with "Write XMP" and RAW sidecars on, the self-healing read copied stars, colour and flag from the sidecar all at once as soon as it held anything. Lightroom with "Automatically write changes into XMP" saves its catalogue into every sidecar, so a sidecar with a flag but no stars erased guest ratings the next time the photo was opened. The file can now add or change a value but never clear one; clearing a star in Lightroom no longer propagates back (clear it in StarRate instead).
+
 **New**
 - **Guest rating notifications** — when someone rates through a share link, you get one summary notification per guest instead of one per click, e.g. "Jane has rated 50 pictures in Shooting-2024 — time to sync the metadata". It is sent once the guest has stopped rating for about 10 minutes; clicking it opens the folder. Comments and logins are not counted, and activity from before the update is not reported. Can be turned off under Personal → StarRate. Needs the Nextcloud Notifications app and background jobs (cron).
 
 ### DE
+
+**Fehlerbehebungen**
+- **Öffnen einer RAW löscht keine Sterne mehr, die Lightroom nicht kennt** — bei aktivem XMP-Schreiben und RAW-Sidecars hat das Self-Healing Sterne, Farbe und Markierung aus dem Sidecar komplett übernommen, sobald es irgendetwas enthielt. Lightroom mit „Änderungen automatisch in XMP speichern“ schreibt seinen Katalogstand in jedes Sidecar; ein Sidecar mit Markierung, aber ohne Sterne hat so Gast-Bewertungen beim nächsten Öffnen gelöscht. Die Datei kann jetzt Werte setzen oder ändern, aber nie löschen; ein in Lightroom entfernter Stern wird nicht mehr zurückübertragen (dafür in StarRate entfernen).
 
 **Neu**
 - **Benachrichtigung bei Gast-Bewertungen** — bewertet jemand über einen Gast-Link, kommt eine Sammelmeldung pro Gast statt einer pro Klick, z. B. „Jane hat 50 Bilder in Shooting-2024 bewertet — Zeit, die Metadaten zu synchronisieren". Sie geht raus, sobald der Gast etwa 10 Minuten lang nichts mehr bewertet hat; ein Klick öffnet den Ordner. Kommentare und Logins zählen nicht, Aktivität vor dem Update wird nicht gemeldet. Abschaltbar unter Persönlich → StarRate. Benötigt die Nextcloud-App „Notifications" und Hintergrund-Jobs (Cron).

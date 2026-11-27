@@ -72,32 +72,19 @@ class RatingController extends Controller
             $store = $this->xmpStores->forFile($file, $this->userSettings->getSettings($userId));
             if ($store !== null) {
                 try {
-                    $xmp = $store->readMetadata($file);
+                    $xmp    = $store->readMetadata($file);
+                    $synced = self::mergeSelfHeal($db, $xmp);
 
-                    // Konservative Heuristik: nur synchen, wenn das XMP tatsächlich etwas
-                    // enthält. Reines "alles leer" interpretieren wir als "Datei hat keine
-                    // StarRate-Metadaten" — sonst würden wir DB-Tags löschen, wenn LR keine
-                    // XMP geschrieben hat (z.B. "Automatically write changes into XMP" aus),
-                    // die Datei unlesbar war oder unser Parser ein LR-spezifisches Layout
-                    // nicht findet.
-                    // Trade-off: ein in LR explizit auf 0★/kein-Label/kein-Pick gesetztes
-                    // Bild propagiert nicht zurück. Akzeptabel — Datenverlust ist das
-                    // schlimmere Risiko.
-                    $xmpHasData = $xmp['rating'] > 0
-                               || $xmp['label']  !== null
-                               || $xmp['pick']   !== 'none';
+                    // Nur geänderte Felder schreiben: setMetadata löscht pro übergebenem
+                    // Feld erst alle Tags und legt dann neu an — unveränderte Felder
+                    // (z.B. Gast-Sterne) bleiben so außerhalb dieses Fensters.
+                    $changed = [];
+                    if ($synced['rating'] !== $db['rating']) $changed['rating'] = $synced['rating'];
+                    if ($synced['color']  !== $db['color'])  $changed['color']  = $synced['color'];
+                    if ($synced['pick']   !== $db['pick'])   $changed['pick']   = $synced['pick'];
 
-                    $diff = $xmp['rating'] !== $db['rating']
-                         || $xmp['label']  !== $db['color']
-                         || $xmp['pick']   !== $db['pick'];
-
-                    if ($xmpHasData && $diff) {
-                        $synced = [
-                            'rating' => $xmp['rating'],
-                            'color'  => $xmp['label'],
-                            'pick'   => $xmp['pick'],
-                        ];
-                        $this->tagService->setMetadata($fileIdStr, $synced);
+                    if ($changed !== []) {
+                        $this->tagService->setMetadata($fileIdStr, $changed);
                         return new DataResponse($synced);
                     }
                 } catch (\Exception $e) {
@@ -392,6 +379,33 @@ class RatingController extends Controller
             $settings['xmp_label_language'],
         );
         return true;
+    }
+
+    /**
+     * Self-Healing feldweise: das XMP darf einen Wert setzen oder ändern, aber nie
+     * einen DB-Wert löschen. 0★, kein Label und kein Pick im XMP zählen als „keine
+     * Aussage“, nicht als „entfernen“.
+     *
+     * Grund: Lightroom mit „Änderungen automatisch in XMP speichern“ schreibt seinen
+     * Katalogstand in jedes Sidecar. Kennt der Katalog die StarRate-Sterne nicht
+     * (Metadaten noch nicht aus Datei gelesen), fehlt xmp:Rating dort — und das
+     * alte Ganz-oder-gar-nicht-Sync hat dann wegen eines vorhandenen xmpDM:pick
+     * alle drei Felder übernommen und Gast-Sterne gelöscht.
+     *
+     * Trade-off (wie bisher für „XMP komplett leer“): ein in LR explizit entfernter
+     * Stern / Label / Pick propagiert nicht zurück. Datenverlust ist schlimmer.
+     *
+     * @param array{rating: int, color: string|null, pick: string} $db
+     * @param array{rating: int, label: string|null, pick: string} $xmp
+     * @return array{rating: int, color: string|null, pick: string}
+     */
+    private static function mergeSelfHeal(array $db, array $xmp): array
+    {
+        return [
+            'rating' => $xmp['rating'] > 0 ? $xmp['rating'] : $db['rating'],
+            'color'  => $xmp['label'] ?? $db['color'],
+            'pick'   => $xmp['pick'] !== 'none' ? $xmp['pick'] : $db['pick'],
+        ];
     }
 
     private function validateRatingBody(array $body): array
